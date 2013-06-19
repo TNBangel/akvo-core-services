@@ -10,4 +10,6 @@
                  [hiccup "1.0.3"]
                  [com.cemerick/friend "0.1.5"]
                  [ring/ring-jetty-adapter "1.2.0-RC1"]]
-  :main akvo-auth.core)
+  :plugins [[lein-ring "0.8.5"]]
+  :main akvo-auth.core
+  :ring {:handler akvo-auth.core/app})
