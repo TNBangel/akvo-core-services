@@ -5,7 +5,6 @@
             :url "http://www.gnu.org/licenses/agpl.html"}
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojure/core.memoize "0.5.4"]
-                 [clj-http "0.7.2"]
                  [compojure "1.1.5"]
                  [hiccup "1.0.3"]
                  [http-kit "2.1.4"]

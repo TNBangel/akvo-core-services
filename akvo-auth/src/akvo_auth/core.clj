@@ -11,7 +11,7 @@
   (resources "/")
   (not-found (html/not-found)))
 
-(def app (wrap-base-url (site routes)))
+(def app (wrap-base-url (site #'routes)))
 
 (defn -main [& [port]]
   (run-server app {:port (if port (Integer. port) 8000)}))
