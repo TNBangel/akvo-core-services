@@ -1,4 +1,4 @@
-# Avko authentication service
+# Akvo authentication service
 
 ## Working with the code
 
