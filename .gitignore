@@ -1,7 +1,7 @@
 # Clojure & Leiningen stuff
-/classes/
-/lib/
-/target/
+*/classes/
+*/lib/
+*/target/
 .lein-failures
 .lein-repl-history
 pom.xml*
