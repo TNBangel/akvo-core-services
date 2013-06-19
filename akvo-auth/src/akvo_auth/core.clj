@@ -3,7 +3,7 @@
                        [handler :refer [site]]
                        [route :refer [not-found resources]]]
             [hiccup.middleware :refer [wrap-base-url]]
-            [ring.adapter.jetty :refer [run-jetty]]
+            [org.httpkit.server :refer [run-server]]
             [akvo-auth.html :as html]))
 
 (defroutes ^:private routes
@@ -14,5 +14,4 @@
 (def app (wrap-base-url (site routes)))
 
 (defn -main [& [port]]
-  (run-jetty #'app {:join? false
-                    :port (if port (Integer. port) 8000)}))
+  (run-server app {:port (if port (Integer. port) 8000)}))

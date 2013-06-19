@@ -8,8 +8,6 @@
                  [clj-http "0.7.2"]
                  [compojure "1.1.5"]
                  [hiccup "1.0.3"]
-                 [com.cemerick/friend "0.1.5"]
-                 [ring/ring-jetty-adapter "1.2.0-RC1"]]
-  :plugins [[lein-ring "0.8.5"]]
-  :main akvo-auth.core
-  :ring {:handler akvo-auth.core/app})
+                 [http-kit "2.1.4"]
+                 [com.cemerick/friend "0.1.5"]]
+  :main akvo-auth.core)
