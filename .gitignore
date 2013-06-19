@@ -1,0 +1,10 @@
+# Clojure & Leiningen stuff
+/classes/
+/lib/
+/target/
+.lein-failures
+.lein-repl-history
+pom.xml*
+*.class
+*.jar
+*.war
