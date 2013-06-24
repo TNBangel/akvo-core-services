@@ -14,8 +14,8 @@
   (not-found (html/not-found)))
 
 (defn- in-dev-mode? []
-  (if-let [dev-mode (System/getenv "LOCAL_DEV")]
-    (= (lower-case dev-mode) (or "true" "1"))))
+  (if-let [dev-mode (lower-case (System/getenv "LOCAL_DEV"))]
+    (= (or "true" "1") dev-mode)))
 
 (defn -main [& [port]]
   (let [app (if (in-dev-mode?)
