@@ -1,9 +1,11 @@
 (ns akvo-auth.core
-  (:require [compojure [core :refer [GET defroutes]]
+  (:require [clojure.string :refer [lower-case]]
+            [compojure [core :refer [GET defroutes]]
                        [handler :refer [site]]
                        [route :refer [not-found resources]]]
-            [hiccup.middleware :refer [wrap-base-url]]
             [org.httpkit.server :refer [run-server]]
+            [hiccup.middleware :refer [wrap-base-url]]
+            [ring.middleware.reload :refer [wrap-reload]]
             [akvo-auth.html :as html]))
 
 (defroutes ^:private routes
@@ -11,7 +13,12 @@
   (resources "/")
   (not-found (html/not-found)))
 
-(def app (wrap-base-url (site #'routes)))
+(defn- in-dev-mode? []
+  (if-let [dev-mode (System/getenv "LOCAL_DEV")]
+    (= (lower-case dev-mode) (or "true" "1"))))
 
 (defn -main [& [port]]
-  (run-server app {:port (if port (Integer. port) 8000)}))
+  (let [app (if (in-dev-mode?)
+              (wrap-reload (wrap-base-url (site #'routes)))
+              (wrap-base-url (site routes)))]
+    (run-server app {:port (if port (Integer. port) 8000)})))
