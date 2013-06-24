@@ -1,4 +1,5 @@
 (ns akvo-auth.core
+  (:gen-class)
   (:require [clojure.string :refer [lower-case]]
             [compojure [core :refer [GET defroutes]]
                        [handler :refer [site]]
@@ -15,7 +16,7 @@
 
 (defn- in-dev-mode? []
   (if-let [dev-mode (System/getenv "LOCAL_DEV")]
-    (= (or "true" "1") (lower-case dev-mode))))
+    (= (or "1" "on" "true") (lower-case dev-mode))))
 
 (defn -main [& [port]]
   (let [app (if (in-dev-mode?)
