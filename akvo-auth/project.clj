@@ -10,4 +10,5 @@
   :license {:name "GNU Affero General Public License"
             :url "http://www.gnu.org/licenses/agpl.html"}
   :main akvo-auth.core
+  :min-lein-version "2.0.0"
   :url "http://www.akvo.org/")
