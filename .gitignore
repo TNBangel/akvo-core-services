@@ -4,7 +4,14 @@
 */target/
 .lein-failures
 .lein-repl-history
+.lein-deps-sum
+.lein-plugins
 pom.xml*
 *.class
 *.jar
 *.war
+*/.classpath
+*/.project
+*/.settings/*
+*/bin/*
+
