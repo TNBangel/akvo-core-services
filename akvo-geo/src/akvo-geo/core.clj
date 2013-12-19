@@ -33,30 +33,10 @@
 (declare shapes)
 (defentity shapes)
 
-; helper functions
-(defn get-double [dstr]
-  "Returns nil if str cannot be cast to a double or is nil itself"
-  (if (nil? dstr) 
-   nil 
-   (try (Double/parseDouble dstr)
-    (catch NumberFormatException _))))
-
-(defn valid-location?
-  "checks if the map contains a valid lat/lon"
-  [lon lat] 
-  (let [latd (get-double lat)
-        lond (get-double lon)]
-    ;first check if we have successfully parsed the lat and lon, 
-    ; then check the bounds
-    (if (every? identity [latd lond])
-      (and (<= -180.0 latd 180.0)
-           (<= -90.0 lond 90.0 ))
-      false)))
-
 (defn geocode 
   "does a reverse geocoding of a lon lat pair"
   [lon lat]
-  (select shapes (fields :name_0 :name_1 :name_2 :name_3)
+  (select shapes (fields :name_0 :name_1 :name_2 :name_3 :name_4 :name_5)
                       (where (contains :geom (from-wkt (format "POINT(%.10f %.10f)" lat lon))))))
 
 (defn pad-geocode-result
@@ -65,8 +45,7 @@
    [result]
    (let  [all-keys [:name_0 :name_1 :name_2 :name_3 :name_4 :name_5]]
     (reduce #(assoc %1 %2 (get result %2 "unknown")) {} all-keys)))
-     
-     
+
 (defn geocode-response 
   "assembles the reverse geocoding response"
   [lon lat]
@@ -85,14 +64,22 @@
 
 (defresource locate-response
   :available-media-types ["application/json" "application/clojure;q=0.9"]
-  ; If we have a valid request, we put the lat / lon as keys in the context
-  :exists? (fn [ctx] (let [{:keys [lon lat]} (get-in ctx [:request :params])] 
-                       (if (valid-location? lon lat)   
-                         {:lon (get-double lon) 
-                          :lat (get-double lat)})))
-  :handle-not-found {:status "fail" 
-                     :message "Not a valid request. The lat and lon key need to be present, and -180 < lat < 180 and -90 < lon < 90"}
-  :handle-ok (fn [ctx] (geocode-response (get ctx :lon) (get ctx :lat))))
+  
+  :malformed? (fn [ctx]
+                (let [{:keys [lat lon]} (get-in ctx [:request :params])]
+                  (try
+                    [false {:lat (Double/parseDouble lat) :lon (Double/parseDouble lon)}] ;; when false return a vector
+                    (catch Exception _ ;; catches possible NPE and NumberFormatException
+                      true))))
+  :processable? (fn [ctx]
+                  (boolean (and (<= -180.0 (:lat ctx) 180.0)
+                                (<= -90.0 (:lon ctx) 90.0 ))))
+  :handle-ok (fn [ctx]
+               (geocode-response (get ctx :lon) (get ctx :lat))) ;; lat and lon available in context
+  :handle-malformed {:status "fail" 
+                     :message "Not a valid request. The lat and lon key need to be present"}
+  :handle-unprocessable-entity {:status "fail" 
+                                :message "Not a valid request. Latitude and longitude need to satistfy -180 < lat < 180 and -90 < lon < 90"})
 
 (defroutes endpoints
   (ANY "/" [] ok-response)
