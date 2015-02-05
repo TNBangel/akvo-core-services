@@ -1,0 +1,23 @@
+{
+  "orgId": "akvoflowsandbox",
+  "eventType": "dataPointCreated",
+  "entity": {
+    "type": "DATA_POINT",
+    "id": 2352342342,
+    "surveyId": 235234234,
+    "identifier": "fksopkdfspodk",
+    "name": "fsfdf",
+    "location": {
+      "lat": 3423,
+      "lon": 432,
+      "elev": 521
+    }
+  },
+  "context": {
+    "timestamp": 123,
+    "source": {
+      "type": "USER",
+      "id": 234234234
+    }
+  }
+}

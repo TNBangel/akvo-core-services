@@ -1,0 +1,25 @@
+{
+  "orgId": "akvoflow-55",
+  "eventType": "answerCreated",
+  "entity": {
+    "type": "ANSWER",
+    "id": 234234234,
+    "questionId": 234234234,
+    "formInstanceId": 523534534,
+    "answer": {
+      "type": "GEO",
+      "value": {
+        "lat": 123,
+        "lon": 433,
+        "elev": 521
+      }
+    }
+  },
+  "context": {
+    "timestamp": 123,
+    "source": {
+      "type": "USER",
+      "id": 543234
+    }
+  }
+}

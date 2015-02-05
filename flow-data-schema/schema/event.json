@@ -1,0 +1,112 @@
+{
+  "definitions": {
+    "deleted": {
+      "type": "object",
+      "properties": {
+        "orgId": { "type": "string" },
+        "eventType": {
+          "enum": [
+            "answerDeleted",
+            "formInstanceDeleted",
+            "dataPointDeleted",
+            "questionDeleted",
+            "questionGroupDeleted",
+            "formDeleted",
+            "surveyDeleted"
+          ]
+        },
+        "entity": {
+          "type": "object",
+          "properties": {
+            "id": { "type": "integer" }
+          },
+          "required": ["id"]
+        },
+        "context": { "$ref": "context.json" }
+      },
+      "required": ["orgId", "eventType", "entity", "context"]
+    },
+    "answer": {
+      "type":"object",
+      "properties": {
+        "orgId": { "type": "string" },
+        "eventType": { "enum": ["answerCreated", "answerUpdated"] },
+        "entity": { "$ref": "entity.json#/answer" },
+        "context": { "$ref": "context.json" }
+      },
+      "required": ["orgId", "eventType", "entity", "context"]
+    },
+    "form-instance": {
+      "type":"object",
+      "properties": {
+        "orgId": { "type": "string" },
+        "eventType": { "enum": ["formInstanceCreated", "formInstanceUpdated"] },
+        "entity": { "$ref": "entity.json#/form-instance" },
+        "context": { "$ref": "context.json" }
+      },
+      "required": ["orgId", "eventType", "entity", "context"]
+    },
+    "data-point": {
+      "type":"object",
+      "properties": {
+        "orgId": { "type": "string" },
+        "eventType": { "enum": ["dataPointCreated", "dataPointUpdated"] },
+        "entity": { "$ref": "entity.json#/data-point" },
+        "context": { "$ref": "context.json" }
+      },
+      "required": ["orgId", "eventType", "entity", "context"]
+    },
+    "question": {
+      "type":"object",
+      "properties": {
+        "orgId": { "type": "string" },
+        "eventType": { "enum": ["questionCreated", "questionUpdated"] },
+        "entity": { "$ref": "entity.json#/question" },
+        "context": { "$ref": "context.json" }
+      },
+      "required": ["orgId", "eventType", "entity", "context"]
+    },
+    "question-group": {
+      "type":"object",
+      "properties": {
+        "orgId": { "type": "string" },
+        "eventType": { "enum": ["questionGroupCreated", "questionGroupUpdated"] },
+        "entity": { "$ref": "entity.json#/question-group" },
+        "context": { "$ref": "context.json" }
+      },
+      "required": ["orgId", "eventType", "entity", "context"]
+    },
+    "form": {
+      "type":"object",
+      "properties": {
+        "orgId": { "type": "string" },
+        "eventType": { "enum": ["formCreated", "formUpdated"] },
+        "entity": { "$ref": "entity.json#/form" },
+        "context": { "$ref": "context.json" }
+      },
+      "required": ["orgId", "eventType", "entity", "context"]
+    },
+    "survey": {
+      "type":"object",
+      "properties": {
+        "orgId": { "type": "string" },
+        "eventType": { "enum": ["surveyCreated", "surveyUpdated"] },
+        "entity": { "$ref": "entity.json#/survey" },
+        "context": { "$ref": "context.json" }
+      },
+      "required": ["orgId", "eventType", "entity", "context"]
+    }
+  },
+
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "oneOf": [
+    {"$ref": "#/definitions/deleted"},
+    {"$ref": "#/definitions/answer"},
+    {"$ref": "#/definitions/form-instance"},
+    {"$ref": "#/definitions/data-point"},
+    {"$ref": "#/definitions/question"},
+    {"$ref": "#/definitions/question-group"},
+    {"$ref": "#/definitions/form"},
+    {"$ref": "#/definitions/survey"}
+  ]
+}

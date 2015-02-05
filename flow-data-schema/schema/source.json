@@ -1,0 +1,10 @@
+{
+  "user": {
+    "type": "object",
+    "properties": {
+      "type": { "enum": ["USER"]},
+      "id": { "type": "integer" }
+    },
+    "required": ["id", "type"]
+  }
+}

@@ -1,0 +1,95 @@
+{
+    "answer-type": {
+      "geo": {
+        "type": "object",
+        "properties": {
+          "type": { "enum": ["GEO"] },
+          "value": { "$ref": "geo.json" }
+        },
+        "required": ["type", "value"]
+      }
+    },
+
+    "answer": {
+      "type": "object",
+      "properties": {
+        "type": { "enum": ["ANSWER"]},
+        "id": { "type": "integer" },
+        "questionId": { "type": "integer" },
+        "formInstanceId": { "type": "integer" },
+        "answer": { "oneOf": [{"$ref": "#/answer-type/geo"}]}
+      },
+      "required": ["id", "questionId", "formInstanceId", "answer"]
+    },
+
+    "form-instance": {
+      "type": "object",
+      "properties": {
+        "type": { "enum": ["FORM_INSTANCE"] },
+        "id": { "type": "integer" },
+        "surveyId": { "type": "integer" },
+        "dataPointId": { "type": "integer" },
+        "surveyalTime": { "type": "integer" },
+        "collectionDate": { "type": "integer" }
+      },
+      "required": ["type", "id", "surveyId", "surveyalTime", "collectionDate"]
+    },
+
+    "data-point": {
+      "type": "object",
+      "properties": {
+        "type": { "enum": ["DATA_POINT"] },
+        "id": { "type": "integer" },
+        "surveyId": { "type": "integer" },
+        "identifier": { "type": "string" },
+        "name": { "type": "string" },
+        "location": { "$ref": "geo.json" }
+      },
+      "required": ["type", "id", "surveyId", "identifier", "name", "location"]
+    },
+
+    "question": {
+      "type": "object",
+      "properties": {
+        "type": { "enum": ["QUESTION"] },
+        "id": { "type": "integer" },
+        "questionGroupId": { "type": "integer" },
+        "displayText": { "type": "string" }
+      },
+      "required": ["type", "id", "questionGroupId", "displayText"]
+    },
+
+    "question-group": {
+      "type": "object",
+      "properties": {
+        "type": { "enum": ["QUESTION_GROUP"] },
+        "id": { "type": "integer" },
+        "formId": { "type": "integer" },
+        "name": { "type": "string" }
+      },
+      "required": ["type", "id", "formId", "name"]
+    },
+
+    "form": {
+      "type": "object",
+      "properties": {
+        "type": { "enum": ["FORM"] },
+        "id": { "type": "integer" },
+        "surveyId": { "type": "integer" },
+        "name": { "type": "string" }
+      },
+      "required": ["type", "id", "surveyId", "name"]
+    },
+
+    "survey": {
+      "type": "object",
+      "properties": {
+        "type": { "enum": ["SURVEY"] },
+        "id": { "type": "integer" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "public": { "type": "boolean" }
+      },
+      "required": ["type", "id", "name", "public"]
+    }
+}
