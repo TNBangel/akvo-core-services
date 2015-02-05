@@ -1,5 +1,5 @@
 {
-    "answer-type": {
+    "answerType": {
       "geo": {
         "type": "object",
         "properties": {
@@ -17,12 +17,12 @@
         "id": { "type": "integer" },
         "questionId": { "type": "integer" },
         "formInstanceId": { "type": "integer" },
-        "answer": { "oneOf": [{"$ref": "#/answer-type/geo"}]}
+        "answer": { "oneOf": [{"$ref": "#/answerType/geo"}]}
       },
       "required": ["id", "questionId", "formInstanceId", "answer"]
     },
 
-    "form-instance": {
+    "formInstance": {
       "type": "object",
       "properties": {
         "type": { "enum": ["FORM_INSTANCE"] },
@@ -35,7 +35,7 @@
       "required": ["type", "id", "surveyId", "surveyalTime", "collectionDate"]
     },
 
-    "data-point": {
+    "dataPoint": {
       "type": "object",
       "properties": {
         "type": { "enum": ["DATA_POINT"] },
@@ -54,12 +54,13 @@
         "type": { "enum": ["QUESTION"] },
         "id": { "type": "integer" },
         "questionGroupId": { "type": "integer" },
-        "displayText": { "type": "string" }
+        "displayText": { "type": "string" },
+        "identifier": { "type": "string" }
       },
       "required": ["type", "id", "questionGroupId", "displayText"]
     },
 
-    "question-group": {
+    "questionGroup": {
       "type": "object",
       "properties": {
         "type": { "enum": ["QUESTION_GROUP"] },
