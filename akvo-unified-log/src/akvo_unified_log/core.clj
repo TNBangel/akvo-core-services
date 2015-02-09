@@ -50,7 +50,7 @@
                         (let [event-data (-> ctx :request :body)
                               v (valid? event-data)]
                           (when-not v
-                            (println "Invalid:" (-> ctx :request :body)))
+                            (println "Invalid:" (-> ctx :request :body generate-string)))
                           v))
         :post! (fn [ctx]
                  (let [body (-> ctx :request :body)]
