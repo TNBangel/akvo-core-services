@@ -1,5 +1,6 @@
 (ns akvo-unified-log.core
-  (:require [clojure.pprint :refer (pprint)]
+  (:require [clojure.java.io :as io]
+            [clojure.pprint :refer (pprint)]
             [clojure.java.jdbc :as jdbc]
             [liberator.core :refer (resource defresource)]
             [ring.adapter.jetty :as jetty]
@@ -9,7 +10,10 @@
             [yesql.core :refer (defqueries)]
             [cheshire.core :refer (generate-string)]
             [environ.core :refer (env)])
-  (:import [org.postgresql.util PGobject]))
+  (:import [org.postgresql.util PGobject]
+           [com.github.fge.jsonschema.main JsonSchema JsonSchemaFactory]
+           [com.fasterxml.jackson.databind JsonNode]
+           [com.fasterxml.jackson.databind ObjectMapper]))
 
 (def postgres-db {:subprotocol "postgresql"
                   :subname (env :database-url)
@@ -17,6 +21,19 @@
                   :password (env :database-password)})
 
 (defqueries "db.sql")
+
+(def object-mapper (ObjectMapper.))
+
+(defn json-node [s]
+  (.readValue object-mapper (generate-string s) JsonNode))
+
+(def schema-validator
+  (.getJsonSchema (JsonSchemaFactory/byDefault)
+                  (-> "../flow-data-schema/schema/event.json" io/file .toURI str)))
+
+(defn valid? [s]
+  (.validInstance schema-validator
+                  (json-node s)))
 
 (defn jsonb
   "Create a JSONB object"
@@ -26,15 +43,19 @@
     (.setValue (generate-string x))))
 
 (defroutes app
-  (ANY "/event" [] (resource
-                    :available-media-types ["application/json"]
-                    :processable? (fn [ctx]
-                                    (println "TODO: Validate" (-> ctx :request :body))
-                                    true)
-                    :post! (fn [ctx]
-                             (let [body (-> ctx :request :body)]
-                               (insert<! postgres-db (jsonb body))))
-                    :allowed-methods [:post])))
+  (ANY "/event" []
+       (resource
+        :available-media-types ["application/json"]
+        :processable? (fn [ctx]
+                        (let [event-data (-> ctx :request :body)
+                              v (valid? event-data)]
+                          (when-not v
+                            (println "Invalid:" (-> ctx :request :body)))
+                          v))
+        :post! (fn [ctx]
+                 (let [body (-> ctx :request :body)]
+                   (insert<! postgres-db (jsonb body))))
+        :allowed-methods [:post])))
 
 (defn -main [& [port]]
   (let [port (Integer. (or port (env :port) 3030))]
