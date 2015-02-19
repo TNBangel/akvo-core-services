@@ -9,7 +9,8 @@
             [compojure.core :refer (defroutes ANY)]
             [yesql.core :refer (defqueries)]
             [cheshire.core :refer (generate-string)]
-            [environ.core :refer (env)])
+            [environ.core :refer (env)]
+            [clj-time.core :as t])
   (:import [org.postgresql.util PGobject]
            [com.github.fge.jsonschema.main JsonSchema JsonSchemaFactory]
            [com.fasterxml.jackson.databind JsonNode]
@@ -42,7 +43,23 @@
     (.setType "jsonb")
     (.setValue (generate-string x))))
 
+(def instances (atom {}))
+
 (defroutes app
+  (ANY "/event-notification" []
+       (resource
+        :available-media-types ["application/json"]
+        :allowed-methods [:post]
+        :processable (fn [ctx]
+                       (let [data (-> ctx :request :body)]
+                         (and (contains? data "orgId")
+                              (contains? data "url"))))
+        :post! (fn [ctx]
+                 (let [{:strs [orgId] :as event-notification} (-> ctx :request :body)]
+                   (swap! instances assoc-in [orgId] (assoc event-notification
+                                                            "lastNotification"
+                                                            (t/now)))))))
+
   (ANY "/event" []
        (resource
         :available-media-types ["application/json"]
@@ -64,7 +81,12 @@
                        wrap-json-body)
                      {:port port :join? false})))
 
-;; (.stop server)
-;; (def server (-main))
-;; (select-all postgres-db)
-;; (insert<! postgres-db (str->jsonb "{}"))
+(comment
+
+  (.stop server)
+  (def server (-main))
+  (last (select-all postgres-db))
+  (last-timestamp postgres-db "flowaglimmerofhope")
+  (insert<! postgres-db (str->jsonb "{}"))
+
+  )

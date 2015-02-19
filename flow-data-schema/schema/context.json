@@ -2,7 +2,9 @@
   "type": "object",
   "properties": {
     "source": {
-      "oneOf": [{"$ref": "source.json#/user"}]
+      "oneOf": [
+        {"$ref": "source.json#/user"},
+        {"$ref": "source.json#/device"}]
     },
     "timestamp": { "type": "integer" }
   },

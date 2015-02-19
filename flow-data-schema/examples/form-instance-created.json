@@ -4,7 +4,7 @@
   "entity": {
     "type": "FORM_INSTANCE",
     "id": 5234234234,
-    "surveyId": 533234234,
+    "formId": 533234234,
     "dataPointId": 42342341,
     "surveyalTime": 0,
     "collectionDate": 1242312

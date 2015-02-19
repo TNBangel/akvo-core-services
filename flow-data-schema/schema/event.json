@@ -197,7 +197,7 @@
       "type":"object",
       "properties": {
         "orgId": { "type": "string" },
-        "eventType": { "enum": ["surveyCreated", "surveyUpdated"] },
+        "eventType": { "enum": ["surveyGroupCreated", "surveyGroupUpdated"] },
         "entity": { "$ref": "entity.json#/survey" },
         "context": { "$ref": "context.json" }
       },

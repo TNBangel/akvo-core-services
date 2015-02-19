@@ -1,23 +1,13 @@
 {
-    "answerType": {
-      "geo": {
-        "type": "object",
-        "properties": {
-          "type": { "enum": ["GEO"] },
-          "value": { "$ref": "geo.json" }
-        },
-        "required": ["type", "value"]
-      }
-    },
-
     "answer": {
       "type": "object",
       "properties": {
         "type": { "enum": ["ANSWER"]},
+        "answerType": { "enum": ["GEO", "VALUE", "IMAGE"]},
         "id": { "type": "integer" },
         "questionId": { "type": "integer" },
         "formInstanceId": { "type": "integer" },
-        "answer": { "oneOf": [{"$ref": "#/answerType/geo"}]}
+        "value": { "type": "string" }
       },
       "required": ["id", "questionId", "formInstanceId", "answer"]
     },
@@ -27,12 +17,12 @@
       "properties": {
         "type": { "enum": ["FORM_INSTANCE"] },
         "id": { "type": "integer" },
-        "surveyId": { "type": "integer" },
+        "formId": { "type": "integer" },
         "dataPointId": { "type": "integer" },
         "surveyalTime": { "type": "integer" },
         "collectionDate": { "type": "integer" }
       },
-      "required": ["type", "id", "surveyId", "surveyalTime", "collectionDate"]
+      "required": ["type", "id", "formId", "surveyalTime", "collectionDate"]
     },
 
     "dataPoint": {
@@ -85,12 +75,12 @@
     "survey": {
       "type": "object",
       "properties": {
-        "type": { "enum": ["SURVEY"] },
+        "type": { "enum": ["SURVEY_GROUP"] },
         "id": { "type": "integer" },
         "name": { "type": "string" },
         "description": { "type": "string" },
         "public": { "type": "boolean" }
       },
-      "required": ["type", "id", "name", "public"]
+      "required": ["type", "id", "name"]
     }
 }

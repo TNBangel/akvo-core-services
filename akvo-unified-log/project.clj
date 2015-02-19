@@ -6,8 +6,13 @@
   :plugins [[lein-environ "1.0.0"]]
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/java.jdbc "0.3.6"]
+                 [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [org.postgresql/postgresql "9.3-1102-jdbc41"]
                  [com.github.fge/json-schema-validator "2.2.6"]
+                 [com.google.appengine/appengine-tools-sdk "1.9.9"]
+                 [com.google.appengine/appengine-remote-api "1.9.9"]
+                 [com.google.appengine/appengine-api-1.0-sdk "1.9.9"]
+                 ;; [com.google.appengine/appengine-remote-api "1.9.17a"]
                  [ring/ring-core "1.3.2"]
                  [ring/ring-json "0.3.1"]
                  [ring/ring-jetty-adapter "1.3.2"]
@@ -15,4 +20,5 @@
                  [compojure "1.3.1"]
                  [yesql "0.4.0"]
                  [cheshire "5.4.0"]
-                 [environ "1.0.0"]])
+                 [environ "1.0.0"]
+                 [clj-time "0.9.0"]])

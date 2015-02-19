@@ -1,4 +1,10 @@
 {
+  "device": {
+     "type": "object",
+     "properties": {
+       "type": {"enum": ["DEVICE"]}
+     }
+  },
   "user": {
     "type": "object",
     "properties": {
