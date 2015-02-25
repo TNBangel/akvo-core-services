@@ -100,7 +100,8 @@
                                last-notification))
               (let [event-count (fetch-and-insert-new-events db-spec org-id url)]
                 (debugf "Inserted %s events into %s" event-count org-id)
-                (swap! instances assoc-in [org-id :last-event-count] event-count))
+                (swap! instances assoc-in [org-id :last-event-count] event-count)
+                (swap! instances update-in [org-id :total-event-count] (fnil + 0) event-count))
               (do
                 (infof "No new events for %s and no notifications from GAE. Halting data fetching for now" org-id)
                 (scheduler/cancel-task org-id))))
