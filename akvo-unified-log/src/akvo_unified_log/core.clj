@@ -53,7 +53,7 @@
         events (->> (gae/fetch-data-iterator ds since 1000)
                  iterator-seq
                  (map #(or (.getProperty % "payload")
-                           (.getProperty % "payloadText")))
+                           (.getValue (.getProperty % "payloadText"))))
                  ;; We need two representations, one for validation/sorting and one for postgres
                  (map (fn [s]
                         {:string s
