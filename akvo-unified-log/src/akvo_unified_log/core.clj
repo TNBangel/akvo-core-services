@@ -145,7 +145,8 @@
                      (debugf "ScheduledFuture is already running for %s" orgId)
                      (do
                        (infof "Scheduling data fetching for %s" orgId)
-                       (scheduler/schedule-task orgId (fetch-and-insert-task orgId)))))))))
+                       (scheduler/schedule-task orgId (fetch-and-insert-task orgId))))))
+        :new? false)))
 
 (defn -main [& [port]]
   (let [port (Integer. (or port (env :port) 3030))]
