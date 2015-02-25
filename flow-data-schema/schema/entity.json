@@ -3,7 +3,7 @@
       "type": "object",
       "properties": {
         "type": { "enum": ["ANSWER"]},
-        "answerType": { "enum": ["GEO", "VALUE", "IMAGE"]},
+        "answerType": { "enum": ["GEO", "VALUE", "IMAGE", "CASCADE", "DATE"]},
         "id": { "type": "integer" },
         "questionId": { "type": "integer" },
         "formInstanceId": { "type": "integer" },
