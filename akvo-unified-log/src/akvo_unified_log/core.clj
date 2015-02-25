@@ -127,10 +127,13 @@
        (resource
         :available-media-types ["application/json"]
         :allowed-methods [:post]
-        :processable (fn [ctx]
-                       (let [data (-> ctx :request :body)]
-                         (and (contains? data "orgId")
-                              (contains? data "url"))))
+        :known-content-type? (fn [ctx]
+                               (let [content-type (get-in ctx [:request :headers "content-type"])]
+                                 (= content-type "application/json")))
+        :processable? (fn [ctx]
+                        (let [data (-> ctx :request :body)]
+                          (and (contains? data "orgId")
+                               (contains? data "url"))))
         :post! (fn [ctx]
                  (let [{:strs [orgId url] :as event-notification} (-> ctx :request :body)]
                    (debugf "Received notification %s" event-notification)
