@@ -1,11 +1,10 @@
 -- name: select-all
-SELECT * FROM akvo_log
+SELECT * FROM event_log
 
 -- name: last-timestamp
-SELECT MAX((payload->'context'->>'timestamp')::bigint)
+SELECT MAX((payload->'context'->>'timestamp')::numeric)
        AS timestamp
-       FROM akvo_log
-       WHERE payload->>'orgId'=:org_id
+       FROM event_log
 
 -- name: insert<!
-INSERT INTO akvo_log ( payload ) VALUES ( :payload )
+INSERT INTO event_log ( payload ) VALUES ( :payload )

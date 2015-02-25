@@ -9,7 +9,7 @@
         "formInstanceId": { "type": "integer" },
         "value": { "type": "string" }
       },
-      "required": ["id", "questionId", "formInstanceId", "answer"]
+      "required": ["id", "formInstanceId", "value", "answerType"]
     },
 
     "formInstance": {
@@ -35,7 +35,7 @@
         "name": { "type": "string" },
         "location": { "$ref": "geo.json" }
       },
-      "required": ["type", "id", "surveyId", "identifier", "name", "location"]
+      "required": ["type", "id", "surveyId", "identifier"]
     },
 
     "question": {

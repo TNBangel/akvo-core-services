@@ -12,13 +12,15 @@
                  [com.google.appengine/appengine-tools-sdk "1.9.9"]
                  [com.google.appengine/appengine-remote-api "1.9.9"]
                  [com.google.appengine/appengine-api-1.0-sdk "1.9.9"]
-                 ;; [com.google.appengine/appengine-remote-api "1.9.17a"]
                  [ring/ring-core "1.3.2"]
                  [ring/ring-json "0.3.1"]
                  [ring/ring-jetty-adapter "1.3.2"]
+                 [com.taoensso/timbre "3.4.0"]
                  [liberator "0.12.2"]
                  [compojure "1.3.1"]
                  [yesql "0.4.0"]
                  [cheshire "5.4.0"]
                  [environ "1.0.0"]
-                 [clj-time "0.9.0"]])
+                 [clj-time "0.9.0"]]
+  ;; TODO figure out :profiles {:dev {:source-paths ["dev"]}}
+  :source-paths ["dev" "src"])

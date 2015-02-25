@@ -1,7 +1,12 @@
 (ns akvo-unified-log.core
-  (:require [clojure.java.io :as io]
+  (:require [akvo-unified-log.gae :as gae]
+            [akvo-unified-log.json :as json]
+            [akvo-unified-log.scheduler :as scheduler]
+            [clojure.string :as str]
+            [clojure.java.io :as io]
             [clojure.pprint :refer (pprint)]
             [clojure.java.jdbc :as jdbc]
+            [taoensso.timbre :refer (debugf infof warnf errorf fatalf error)]
             [liberator.core :refer (resource defresource)]
             [ring.adapter.jetty :as jetty]
             [ring.middleware.params :refer (wrap-params)]
@@ -11,41 +16,113 @@
             [cheshire.core :refer (generate-string)]
             [environ.core :refer (env)]
             [clj-time.core :as t])
-  (:import [org.postgresql.util PGobject]
+  (:import [java.util.concurrent Executors TimeUnit]
+           [org.postgresql.util PGobject]
            [com.github.fge.jsonschema.main JsonSchema JsonSchemaFactory]
            [com.fasterxml.jackson.databind JsonNode]
            [com.fasterxml.jackson.databind ObjectMapper]))
 
-(def postgres-db {:subprotocol "postgresql"
-                  :subname (env :database-url)
-                  :user (env :database-user)
-                  :password (env :database-password)})
+
+(defonce scheduler (Executors/newScheduledThreadPool 64))
+
+
+;; A map of registered instances. Maps an org-id (which is also the db
+;; name of that instance) to a map of information about the state of
+;; the instance. e.g.
+;; {\"s~flowaglimmerofhope-hrd\" {:org-id \"s~flowaglimmerofhope-hrd\"
+;;                                :url \"flowaglimmerofhope.appspot.com\"
+;;                                :last-notification #<DateTime ...>
+;;                                :last-entity-count 12
+;;                                :total-entity-count 5321
+;;                                :started #<DateTime ...>
+;;                                :status :idle}}
+(defonce instances (atom {}))
+
+(defn db-spec [org-id]
+  {:subprotocol "postgresql"
+   :subname (format "//localhost/%s" org-id)
+   :user (env :database-user)
+   :password (env :database-password)})
 
 (defqueries "db.sql")
 
-(def object-mapper (ObjectMapper.))
+;; TODO Cache installer so we don't need to re-autheniticate each time
+(defn fetch-data [instance-url since]
+  (let [installer (-> instance-url gae/remote-api-options gae/install)
+        ds (gae/datastore)
+        events (->> (gae/fetch-data-iterator ds since 1000)
+                 iterator-seq
+                 (map #(or (.getProperty % "payload")
+                           (.getProperty % "payloadText")))
+                 ;; We need two representations, one for validation/sorting and one for postgres
+                 (map (fn [s]
+                        {:string s
+                         :jsonb (json/jsonb s)
+                         :json-node (json/json-node s)}))
+                 ;; TODO We fetch sorted by createdDateTime so this isn't necessary?
+                 (sort-by #(-> % :json-node (.get "context") (.get "timestamp") .longValue)))]
+    (.uninstall installer)
+    events))
 
-(defn json-node [s]
-  (.readValue object-mapper (generate-string s) JsonNode))
+(defn last-fetch-date [db-spec]
+  (let [ts (first (last-timestamp db-spec))]
+    (java.util.Date. (long (or (:timestamp ts) 0)))))
 
-(def schema-validator
-  (.getJsonSchema (JsonSchemaFactory/byDefault)
-                  (-> "../flow-data-schema/schema/event.json" io/file .toURI str)))
+(defn validate-events [events]
+  (doseq [event events]
+    (when-not (json/valid? event)
+      (warnf "Event %s does not follow schema" event))))
 
-(defn valid? [s]
-  (.validInstance schema-validator
-                  (json-node s)))
+;; TODO bulk insert
+(defn insert-events [db-spec events]
+  (doseq [event events]
+    (insert<! db-spec event)))
 
-(defn jsonb
-  "Create a JSONB object"
-  [x]
-  (doto (PGobject.)
-    (.setType "jsonb")
-    (.setValue (generate-string x))))
+(defn fetch-and-insert-new-events
+  "Fetch and insert new events for org-id. Return the number of events inserted"
+  [db-spec org-id url]
+  (let [events (fetch-data url (last-fetch-date db-spec))]
+    (validate-events (map :json-node events))
+    (insert-events db-spec (map :jsonb events))
+    (count events)))
 
-(def instances (atom {}))
+(defn fetch-and-insert-task [org-id]
+  (let [db-spec (db-spec org-id)]
+    (fn []
+      (try
+        (if-let [instance-data (get @instances org-id)]
+          ;; Figure out if we want to continue data fetching or cancel
+          ;; the task and wait for notification from the GAE instance
+          (let [{:keys [url last-notification last-event-count]} instance-data
+                now (t/now)]
+            (if (or (pos? (or last-event-count 0))
+                    (t/within? (t/interval (t/minus now (t/minutes 5)) now)
+                               last-notification))
+              (let [event-count (fetch-and-insert-new-events db-spec org-id url)]
+                (debugf "Inserted %s events into %s" event-count org-id)
+                (swap! instances assoc-in [org-id :last-event-count] event-count))
+              (do
+                (infof "No new events for %s and no notifications from GAE. Halting data fetching for now" org-id)
+                (scheduler/cancel-task org-id))))
+          (do
+            (warnf "No instance data for %s. Cancelling task" org-id)
+            (scheduler/cancel-task org-id)))
+        (catch Exception e
+          (warnf "Unexpected exception during fetch/insert: %s" (.getMessage e))
+          (error e)
+          (warnf "Cancelling task for %s" org-id)
+          (swap! instances dissoc org-id)
+          (scheduler/cancel-task org-id))))))
 
 (defroutes app
+  (ANY "/status" []
+       (resource
+        :available-media-types ["text/html"]
+        :allowed-methods [:get]
+        :handle-ok (fn [ctx]
+                     (format "<pre>%s</pre>"
+                             (str/escape (with-out-str (pprint @instances))
+                                         {\< "&lt;" \> "&gt;"})))))
   (ANY "/event-notification" []
        (resource
         :available-media-types ["application/json"]
@@ -55,24 +132,16 @@
                          (and (contains? data "orgId")
                               (contains? data "url"))))
         :post! (fn [ctx]
-                 (let [{:strs [orgId] :as event-notification} (-> ctx :request :body)]
-                   (swap! instances assoc-in [orgId] (assoc event-notification
-                                                            "lastNotification"
-                                                            (t/now)))))))
-
-  (ANY "/event" []
-       (resource
-        :available-media-types ["application/json"]
-        :processable? (fn [ctx]
-                        (let [event-data (-> ctx :request :body)
-                              v (valid? event-data)]
-                          (when-not v
-                            (println "Invalid:" (-> ctx :request :body generate-string)))
-                          v))
-        :post! (fn [ctx]
-                 (let [body (-> ctx :request :body)]
-                   (insert<! postgres-db (jsonb body))))
-        :allowed-methods [:post])))
+                 (let [{:strs [orgId url] :as event-notification} (-> ctx :request :body)]
+                   (debugf "Received notification %s" event-notification)
+                   (swap! instances update-in [orgId] merge {:org-id orgId
+                                                             :url url
+                                                             :last-notification (t/now)})
+                   (if (scheduler/running? orgId)
+                     (debugf "ScheduledFuture is already running for %s" orgId)
+                     (do
+                       (infof "Scheduling data fetching for %s" orgId)
+                       (scheduler/schedule-task orgId (fetch-and-insert-task orgId)))))))))
 
 (defn -main [& [port]]
   (let [port (Integer. (or port (env :port) 3030))]
@@ -80,13 +149,3 @@
                        wrap-params
                        wrap-json-body)
                      {:port port :join? false})))
-
-(comment
-
-  (.stop server)
-  (def server (-main))
-  (last (select-all postgres-db))
-  (last-timestamp postgres-db "flowaglimmerofhope")
-  (insert<! postgres-db (str->jsonb "{}"))
-
-  )

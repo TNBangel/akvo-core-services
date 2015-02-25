@@ -1,23 +1,13 @@
 {
-  "orgId": "akvoflowsandbox",
-  "eventType": "dataPointCreated",
-  "entity": {
-    "type": "DATA_POINT",
-    "id": 2352342342,
+  "orgId":"s~flowaglimmerofhope-hrd",
+  "entity":{
     "surveyId": 235234234,
-    "identifier": "fksopkdfspodk",
-    "name": "fsfdf",
-    "location": {
-      "lat": 3423,
-      "lon": 432,
-      "elev": 521
-    }
+    "id":22614002,
+    "type":"DATA_POINT",
+    "identifier":"txay-vg24-5jcm"
   },
-  "context": {
-    "timestamp": 123,
-    "source": {
-      "type": "USER",
-      "id": 234234234
-    }
-  }
+  "context":{
+    "timestamp":1424350940550,
+    "source":{"type":"DEVICE"}},
+  "eventType":"dataPointCreated"
 }
