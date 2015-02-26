@@ -1,9 +1,17 @@
 {
-  "device": {
-     "type": "object",
-     "properties": {
-       "type": {"enum": ["DEVICE"]}
-     }
+  "other": {
+    "type": "object",
+    "properties": {
+      "type": {"enum": [
+        "DEVICE",
+        "SENSOR",
+        "WEBFORM",
+        "API",
+        "UNKNOWN",
+        "SYSTEM"
+      ]}
+    },
+    "required": ["type"]
   },
   "user": {
     "type": "object",
