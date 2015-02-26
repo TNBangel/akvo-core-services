@@ -130,11 +130,17 @@
         :allowed-methods [:post]
         :known-content-type? (fn [ctx]
                                (let [content-type (get-in ctx [:request :headers "content-type"])]
-                                 (= content-type "application/json")))
+                                 (if (= content-type "application/json")
+                                   true
+                                   (do (warnf "Invalid content type: %s" content-type)
+                                       false))))
         :processable? (fn [ctx]
                         (let [data (-> ctx :request :body)]
-                          (and (contains? data "orgId")
-                               (contains? data "url"))))
+                          (if (and (contains? data "orgId")
+                                   (contains? data "url"))
+                            true
+                            (do (warnf "Invalid request body: %s" data)
+                                false))))
         :post! (fn [ctx]
                  (let [{:strs [orgId url] :as event-notification} (-> ctx :request :body)]
                    (debugf "Received notification %s" event-notification)
