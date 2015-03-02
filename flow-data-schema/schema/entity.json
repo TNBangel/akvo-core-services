@@ -82,5 +82,17 @@
         "public": { "type": "boolean" }
       },
       "required": ["type", "id", "name"]
+    },
+
+    "deviceFile": {
+      "type": "object",
+      "properties": {
+        "type": { "enum": ["DEVICE_FILE"] },
+        "id": { "type": "integer" },
+        "phoneNumber": { "type": "string" },
+        "imei": { "type": "string" },
+        "uri": { "type": "string" }
+      },
+      "required": ["type", "id", "phoneNumber", "imei", "uri"]
     }
 }

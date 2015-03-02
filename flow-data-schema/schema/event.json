@@ -202,6 +202,16 @@
         "context": { "$ref": "context.json" }
       },
       "required": ["orgId", "eventType", "entity", "context"]
+    },
+    "deviceFile": {
+      "type": "object",
+      "properties": {
+        "orgId": { "type": "string" },
+        "eventType": { "enum": ["deviceFileCreated"] },
+        "entity": { "$ref": "entity.json#/deviceFile" },
+        "context": { "$ref": "context.json" }
+      },
+      "required": ["orgId", "eventType", "entity", "context"]
     }
   },
 
@@ -220,6 +230,7 @@
     {"$ref": "#/definitions/question"},
     {"$ref": "#/definitions/questionGroup"},
     {"$ref": "#/definitions/form"},
-    {"$ref": "#/definitions/survey"}
+    {"$ref": "#/definitions/survey"},
+    {"$ref": "#/definitions/deviceFile"}
   ]
 }
