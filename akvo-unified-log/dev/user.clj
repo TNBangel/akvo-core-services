@@ -1,23 +1,30 @@
-(ns user
-  (:require [akvo-unified-log.core]
-            [environ.core :refer (env)]))
+(ns user)
 
 (comment
+  (require '[environ.core :refer (env)]
+           '[akvo-unified-log.pg :as pg]
+           '[clojure.core.async :as async])
 
-  (.stop server)
-  (def server (akvo-unified-log.core/-main))
+  (def db-spec {:subprotocol "postgresql"
+                :subname "//localhost/flowaglimmerofhope-hrd"
+                :user (env :database-user)
+                :password (env :database-password)})
 
-  akvo-unified-log.core/instances
-  akvo-unified-log.scheduler/scheduler
+  (def pub (pg/publication db-spec))
+  (def chan (pg/subscribe pub ["dataPointCreated"
+                               "formInstanceCreated"
+                               "answerCreated"]))
 
-  (last (select-all postgres-db))
-  (long (:timestamp (first (last-timestamp postgres-db))) )
-  (last-fetch-date postgres-db)
-  (fetch-and-insert-new-events postgres-db "s~flowaglimmerofhope-hrd")
+  (def chan (pg/subscrive-all pub))
 
-  (let [org-id "s~flowaglimmerofhope-hrd"]
-    (last-fetch-date postgres-db org-id))
 
-  env
+  (async/thread
+    (loop []
+      (when-let [event (async/<!! chan)]
+        (pprint event)
+        (recur)))
+    (println "Exiting thread"))
+
+  (pg/close! pub)
 
   )
