@@ -166,7 +166,7 @@
                    (let [jsonb (json/jsonb event-string)
                          json-node (json/json-node event-string)]
                      (if (json/valid? json-node)
-                       (insert-events! (db-spec org-id) [jsonb])
+                       (insert-events (db-spec org-id) [jsonb])
                        (warnf "Invalid event %s" event-string))))))))
 
 (defn -main [& [port]]
