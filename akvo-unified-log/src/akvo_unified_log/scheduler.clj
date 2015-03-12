@@ -1,4 +1,5 @@
 (ns akvo-unified-log.scheduler
+  (:refer-clojure :exclude (delay))
   (:require [taoensso.timbre :refer (debugf infof warnf errorf fatalf error)])
   (:import [java.util.concurrent Executors TimeUnit]))
 

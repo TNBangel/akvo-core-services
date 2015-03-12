@@ -3,7 +3,7 @@
       "type": "object",
       "properties": {
         "type": { "enum": ["ANSWER"]},
-        "answerType": { "enum": ["GEO", "VALUE", "IMAGE", "CASCADE", "DATE", "VIDEO"]},
+        "answerType": { "enum": ["GEO", "VALUE", "IMAGE", "CASCADE", "DATE", "VIDEO", "OTHER"]},
         "id": { "type": "integer" },
         "questionId": { "type": "integer" },
         "formInstanceId": { "type": "integer" },
@@ -22,7 +22,7 @@
         "surveyalTime": { "type": "integer" },
         "collectionDate": { "type": "integer" }
       },
-      "required": ["type", "id", "formId", "surveyalTime", "collectionDate"]
+      "required": ["type", "id", "formId", "collectionDate"]
     },
 
     "dataPoint": {
@@ -93,6 +93,6 @@
         "imei": { "type": "string" },
         "uri": { "type": "string" }
       },
-      "required": ["type", "id", "phoneNumber", "imei", "uri"]
+      "required": ["type", "id", "uri"]
     }
 }

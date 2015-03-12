@@ -29,13 +29,13 @@
 ;; A map of registered instances. Maps an org-id (which is also the db
 ;; name of that instance) to a map of information about the state of
 ;; the instance. e.g.
-;; {\"s~flowaglimmerofhope-hrd\" {:org-id \"s~flowaglimmerofhope-hrd\"
-;;                                :url \"flowaglimmerofhope.appspot.com\"
-;;                                :last-notification #<DateTime ...>
-;;                                :last-entity-count 12
-;;                                :total-entity-count 5321
-;;                                :started #<DateTime ...>
-;;                                :status :idle}}
+;; {\"flowaglimmerofhope-hrd\" {:org-id \"flowaglimmerofhope-hrd\"
+;;                              :url \"flowaglimmerofhope.appspot.com\"
+;;                              :last-notification #<DateTime ...>
+;;                              :last-entity-count 12
+;;                              :total-entity-count 5321
+;;                              :started #<DateTime ...>
+;;                              :status :idle}}
 (defonce instances (atom {}))
 
 (defn db-spec [org-id]
@@ -115,6 +115,13 @@
           (swap! instances dissoc org-id)
           (scheduler/cancel-task org-id))))))
 
+(defn json-content-type? [ctx]
+  (let [content-type (get-in ctx [:request :headers "content-type"])]
+    (if (= content-type "application/json")
+      true
+      (do (warnf "Invalid content type: %s" content-type)
+          false))))
+
 (defroutes app
   (ANY "/status" []
        (resource
@@ -128,12 +135,7 @@
        (resource
         :available-media-types ["application/json"]
         :allowed-methods [:post]
-        :known-content-type? (fn [ctx]
-                               (let [content-type (get-in ctx [:request :headers "content-type"])]
-                                 (if (= content-type "application/json")
-                                   true
-                                   (do (warnf "Invalid notification content type: %s" content-type)
-                                       false))))
+        :known-content-type? json-content-type?
         :processable? (fn [ctx]
                         (let [data (-> ctx :request :body)]
                           (if (and (contains? data "orgId")
@@ -152,7 +154,20 @@
                      (do
                        (infof "Scheduling data fetching for %s" orgId)
                        (scheduler/schedule-task orgId (fetch-and-insert-task orgId))))))
-        :new? false)))
+        :new? false))
+
+  (ANY "/events/:org-id" [org-id]
+       (resource
+        :available-media-types ["application/json"]
+        :allowed-methods [:post]
+        :known-content-type? json-content-type?
+        :post! (fn [ctx]
+                 (doseq [event-string (map generate-string (-> ctx :request :body))]
+                   (let [jsonb (json/jsonb event-string)
+                         json-node (json/json-node event-string)]
+                     (if (json/valid? json-node)
+                       (insert-events! (db-spec org-id) [jsonb])
+                       (warnf "Invalid event %s" event-string))))))))
 
 (defn -main [& [port]]
   (let [port (Integer. (or port (env :port) 3030))]
