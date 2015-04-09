@@ -13,14 +13,16 @@
                 rs (.executeQuery stmt (format get-by-id id))]
       (.next rs)
       {:offset id
-       :event (json/parse-string (.getString rs 1))})))
+       :payload (json/parse-string (.getString rs 1))})))
 
 (defn- poll [conn chan]
   (fn []
+    (println "Polling for new events")
     (with-open [stmt (.createStatement conn)
                 rs (.executeQuery stmt "SELECT 1")])
     (doseq [notification (.getNotifications conn)]
-      (async/put! chan (get-payload conn (.getParameter notification))))))
+      (println "Putting an event on chan")
+      (async/>!! chan (get-payload conn (.getParameter notification))))))
 
 (defn publication [db-spec]
   (let [conn (jdbc/get-connection db-spec)
@@ -61,3 +63,61 @@
 (defn unsubscribe [pub chan event-types]
   (doseq [event-type event-types]
     (async/unsub pub chan event-type)))
+
+(defn get-from [offset]
+  {:pre [(integer? offset)]}
+  (format "SELECT id, payload::text FROM event_log WHERE id >= %s ORDER BY id ASC"
+          offset))
+
+(defn event-chan [db-spec offset]
+  (let [chan (async/chan)]
+    (async/thread
+      (with-open [conn (jdbc/get-connection db-spec)]
+        (.setAutoCommit conn false)
+        (with-open [stmt (.createStatement conn)]
+          (.setFetchSize stmt 300)
+          (with-open [result-set (.executeQuery stmt (get-from offset))]
+            (loop []
+              (if (.next result-set)
+                (do
+                  (async/>!! chan {:offset (.getLong result-set 1)
+                                   :payload (json/parse-string (.getString result-set 2))})
+                  (recur))
+                (do
+                  (println "done")
+                  (async/close! chan))))))))
+    chan))
+
+
+(defn event-chan* [db-spec offset]
+  (let [chan (async/chan)
+        listener-conn (jdbc/get-connection db-spec)
+        scheduler (Executors/newScheduledThreadPool 1)]
+    (with-open [stmt (.createStatement listener-conn)]
+      (.execute stmt "LISTEN event_log"))
+    (async/thread
+      (with-open [conn (jdbc/get-connection db-spec)]
+        (.setAutoCommit conn false)
+        (with-open [stmt (.createStatement conn)]
+          (.setFetchSize stmt 300)
+          (with-open [result-set (.executeQuery stmt (get-from offset))]
+            (loop []
+              (if (.next result-set)
+                (do
+                  (async/>!! chan {:offset (.getLong result-set 1)
+                                   :payload (json/parse-string (.getString result-set 2))})
+                  (recur))
+                (do
+
+                  ;; Catch up done, start listening
+                  (println "Catch-up done, start polling for new events")
+                  (.scheduleWithFixedDelay scheduler
+                                           (poll listener-conn chan)
+                                           1 ;; Initial delay
+                                           1 ;; Delay
+                                           TimeUnit/SECONDS))))))))
+    {:chan chan
+     :close! (fn []
+               (async/close! chan)
+               (.close listener-conn)
+               (.shutdown scheduler))}))

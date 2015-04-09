@@ -15,9 +15,6 @@
                                "formInstanceCreated"
                                "answerCreated"]))
 
-  (def chan (pg/subscrive-all pub))
-
-
   (async/thread
     (loop []
       (when-let [event (async/<!! chan)]
@@ -26,5 +23,4 @@
     (println "Exiting thread"))
 
   (pg/close! pub)
-
   )
