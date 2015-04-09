@@ -103,18 +103,27 @@
   {:pre [(integer? form-id)]}
   (str "raw_data_" form-id))
 
+(defn munge-display-text [display-text]
+  {:pre [(string? display-text)]}
+  (-> display-text
+      (.replaceAll " " "_")
+      (.replaceAll "[^A-Za-z0-9_]" "")))
+
 (defn question-column-name
   ([question-id]
    {:pre [(integer? question-id)]}
-   (if-let [display-text (-> (queryf "SELECT display_text FROM question WHERE id=%s" question-id)
-                           first
-                           (get "display_text"))]
-     (question-column-name question-id display-text)
+   (if-let [{:strs [display_text identifier]}
+            (-> (queryf "SELECT display_text, identifier FROM question WHERE id=%s" question-id)
+                first)]
+     (question-column-name question-id identifier display_text)
      (throw (ex-info "Could not find question" {:quesiton-id question-id}))))
-  ([question-id display-text]
+  ([question-id identifier display-text]
    {:pre [(integer? question-id)
-          (string? display-text)]}
-   (format "\"%s | %s\"" question-id display-text)))
+          (string? display-text)
+          (string? identifier)]}
+   (if (empty? identifier)
+     (format "\"%s_%s\"" question-id (munge-display-text display-text))
+     identifier)))
 
 (defmulti handle-event
   (fn [event]
@@ -180,7 +189,9 @@
   (let [question (get payload "entity")]
     (queryf "ALTER TABLE IF EXISTS %s ADD COLUMN %s %s"
             (raw-data-table-name (get question "formId"))
-            (format "\"%s | %s\"" (get question "id") (get question "displayText"))
+            (question-column-name (get question "id")
+                                  (get question "identifier" "")
+                                  (get question "displayText"))
             (question-type->db-type (get question "questionType")))
     (queryf "INSERT INTO question (id, form_id, display_text, identifier, type)
                VALUES ('%s','%s','%s','%s', '%s')"
@@ -201,21 +212,24 @@
         id (get new-question "id")
         type (get new-question "questionType")
         display-text (get new-question "displayText")
+        identifier (get new-question "identifier" "")
         existing-question (get-question id)
         existing-type (get existing-question "questionType")
-        existing-display-text (get existing-question "displayText")]
+        existing-display-text (get existing-question "displayText")
+        existing-identifier (get existing-question "identifier" "")]
     (when-not existing-question
       (throw (ex-info "No such question" event)))
     (queryf "UPDATE question SET display_text='%s', identifier='%s', type='%s' WHERE id='%s'"
             display-text
-            (get new-question "identifier" "")
+            identifier
             type
             id)
-    (when (not= display-text existing-display-text)
+    (when (or (not= display-text existing-display-text)
+              (not= identifier existing-identifier))
       (queryf "ALTER TABLE IF EXISTS %s RENAME COLUMN %s TO %s"
               (raw-data-table-name (get new-question "formId"))
-              (question-column-name id existing-display-text)
-              (question-column-name id display-text)))
+              (question-column-name id existing-identifier existing-display-text)
+              (question-column-name id identifier display-text)))
     (when (not= type existing-type)
       (queryf "ALTER TABLE IF EXISTS %s ALTER COLUMN %s TYPE %s USING NULL"
               (raw-data-table-name (get new-question "formId"))
@@ -344,6 +358,8 @@
   (queryf "SELECT ST_AsGeoJSON(the_geom) AS geometry FROM raw_data_25594006")
 
   (queryf "select * from raw_data_25594006")
+
+  (queryf "SELECT * FROM question")
 
   (queryf "SELECT CDB_UserTables()")
 
