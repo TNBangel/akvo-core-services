@@ -329,8 +329,8 @@
                 (handle-event event) )
               (catch Exception e
                 (println "Could not handle event" (.getMessage e))))
-            (recur)))
-      close!)))
+            (recur))))
+    close!))
 
 (defn restart []
   (queryf "DELETE FROM question")
@@ -346,37 +346,10 @@
 
   (close!)
 
-
   (->> (queryf "SELECT tablename FROM pg_tables")
     (map #(get % "tablename"))
     (filter #(not (.startsWith % "pg_"))))
 
-
-  (queryf "SELECT * FROM data_points")
-
-  (queryf "UPDATE raw_data_25594006 SET lon=26 WHERE id=33744007")
-  (queryf "SELECT ST_AsGeoJSON(the_geom) AS geometry FROM raw_data_25594006")
-
-  (queryf "select * from raw_data_25594006")
-
-  (queryf "SELECT * FROM question")
-
-  (queryf "SELECT CDB_UserTables()")
-
-
-  (queryf "SELECT grantee, privilege_type
-    FROM information_schema.role_table_grants
-    WHERE table_name='raw_data_25594006'")
-
-  (queryf "GRANT SELECT ON raw_data_25594006 TO public")
-
-  (queryf "GRANT SELECT ON data_points TO public")
-
-  (queryf "SELECT * FROM CDB_TableMetadata")
-  (queryf "SELECT * FROM CDB_Quota")
-
-
-  (queryf "SELECT * FROM data_imports")
 
   (Thread/setDefaultUncaughtExceptionHandler
    (reify Thread$UncaughtExceptionHandler
