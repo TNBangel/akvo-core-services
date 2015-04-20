@@ -147,8 +147,7 @@
   (str "raw_data_" form-id))
 
 (defmulti handle-event
-  (fn [db-spec event]
-    {:pre [(db-spec? db-spec)]}
+  (fn [db-conn event]
     (get-in event [:payload "eventType"])))
 
 (defmethod handle-event :default [db-spec event]
