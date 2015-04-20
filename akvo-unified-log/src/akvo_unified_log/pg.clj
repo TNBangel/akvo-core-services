@@ -17,12 +17,11 @@
 
 (defn- poll [conn chan]
   (fn []
-    (println "Polling for new events")
     (with-open [stmt (.createStatement conn)
                 rs (.executeQuery stmt "SELECT 1")])
     (doseq [notification (.getNotifications conn)]
-      (println "Putting an event on chan")
-      (async/>!! chan (get-payload conn (.getParameter notification))))))
+      (let [payload (get-payload conn (.getParameter notification))]
+        (async/>!! chan payload)))))
 
 (defn publication [db-spec]
   (let [conn (jdbc/get-connection db-spec)
@@ -84,12 +83,11 @@
                                    :payload (json/parse-string (.getString result-set 2))})
                   (recur))
                 (do
-                  (println "done")
                   (async/close! chan))))))))
     chan))
 
-
 (defn event-chan* [db-spec offset]
+  {:pre [(integer? offset)]}
   (let [chan (async/chan)
         listener-conn (jdbc/get-connection db-spec)
         scheduler (Executors/newScheduledThreadPool 1)]
@@ -108,7 +106,6 @@
                                    :payload (json/parse-string (.getString result-set 2))})
                   (recur))
                 (do
-
                   ;; Catch up done, start listening
                   (println "Catch-up done, start polling for new events")
                   (.scheduleWithFixedDelay scheduler
