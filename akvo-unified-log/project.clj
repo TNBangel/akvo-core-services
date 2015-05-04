@@ -13,6 +13,7 @@
                  [com.google.appengine/appengine-tools-sdk "1.9.9"]
                  [com.google.appengine/appengine-remote-api "1.9.9"]
                  [com.google.appengine/appengine-api-1.0-sdk "1.9.9"]
+                 [com.mchange/c3p0 "0.9.5"]
                  [ring/ring-core "1.3.2"]
                  [ring/ring-json "0.3.1"]
                  [ring/ring-jetty-adapter "1.3.2"]
@@ -24,5 +25,8 @@
                  [cheshire "5.4.0"]
                  [environ "1.0.0"]
                  [clj-time "0.9.0"]]
+  :aot [akvo-unified-log.reporting]
+  :main akvo-unified-log.reporting
+
   ;; TODO figure out :profiles {:dev {:source-paths ["dev"]}}
   :source-paths ["dev" "src"])

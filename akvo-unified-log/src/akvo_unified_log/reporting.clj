@@ -1,50 +1,111 @@
 (ns akvo-unified-log.reporting
+  (:gen-class)
   (:require [akvo-unified-log.pg :as pg]
             [taoensso.timbre :refer (debugf infof warnf errorf fatalf error)]
             [environ.core :refer (env)]
             [clojure.string :as string]
+            [clojure.edn :as edn]
             [clojure.walk :as walk]
             [clojure.java.jdbc :as jdbc]
-            [clojure.core.async :as async :refer (<!!)]))
+            [clojure.core.async :as async :refer (<!!)]
+            [clj-time.core :as time]
+            [clj-time.format :as time-format])
+  (:import [com.mchange.v2.c3p0 ComboPooledDataSource]
+           [org.postgresql.util PGobject]))
 
 (comment
+  (require '[clojure.pprint :refer (pprint)])
 
   (Thread/setDefaultUncaughtExceptionHandler
    (reify Thread$UncaughtExceptionHandler
      (uncaughtException [_ thread ex]
        (error ex "Unhandled exception in thread"))))
 
-  (def rspec (reporting-spec "flowaglimmerofhope-hrd"))
+  (def config (edn/read-string (slurp "reporting-config.edn")))
+  config
+
+  (def espec (event-log-spec config "flowaglimmerofhope-hrd"))
+  (jdbc/query espec ["SELECT count(*) from event_log"])
+
+
+  (def rspec (reporting-spec config "flowaglimmerofhope-hrd"))
+
+  (jdbc/query rspec ["SELECT survey_id FROM form WHERE id=596014"])
 
   (jdbc/query rspec ["SELECT * FROM survey"])
-  (jdbc/query rspec ["SELECT * FROM form WHERE survey_id=?" 30134009])
-  (jdbc/query rspec ["SELECT * FROM question WHERE form_id=?" 25594006])
-  (jdbc/query rspec ["SELECT * FROM raw_data_25594006"])
+  (count (jdbc/query rspec ["SELECT * FROM form where survey_id=28604000"]))
+  (count (jdbc/query rspec ["SELECT * FROM question WHERE form_id=28614000"]))
+  (count (jdbc/query rspec ["SELECT * FROM event_offset"]))
+  (jdbc/query rspec ["SELECT * FROM raw_data_28614000"])
   (jdbc/query rspec ["SELECT name, shoe_size::integer FROM raw_data_25594006"])
   (jdbc/query rspec ["SELECT * FROM event_offset"])
 
-  (setup-tables "flowaglimmerofhope-hrd")
-  (reset-tables "flowaglimmerofhope-hrd")
+  (jdbc/query rspec ["SELECT column_name, data_type, character_maximum_length
+                        FROM INFORMATION_SCHEMA.COLUMNS
+                        WHERE table_name = 'raw_data_68614000'"])
+
+  (setup-tables config "flowaglimmerofhope-hrd")
+  (reset-tables config "flowaglimmerofhope-hrd")
 
   (def close! (restart "flowaglimmerofhope-hrd"
                        (wrap-update-offset "flowaglimmerofhope-hrd" handle-event)))
 
-  (def close! (start "flowaglimmerofhope-hrd"
-                     (wrap-update-offset "flowaglimmerofhope-hrd" handle-event)))
+  (def close! (start config
+                     "flowaglimmerofhope-hrd"
+                     (wrap-update-offset config "flowaglimmerofhope-hrd" handle-event)))
 
-  (close!))
+  (close!)
 
-(defn event-log-spec [org-id]
+
+
+  (time
+   (dotimes [_ 30]
+     (jdbc/query rspec ["SELECT 1"])))
+
+  (time
+   (jdbc/with-db-connection [db-conn rspec]
+     (dotimes [_ 30]
+       (jdbc/query db-conn ["SELECT 1"]))))
+
+  (time
+   (let [pool (pool rspec)]
+     (dotimes [_ 30]
+     (jdbc/query pool ["SELECT 1"]))))
+
+
+  )
+
+(defn event-log-spec [config org-id]
   {:subprotocol "postgresql"
-   :subname (str "//localhost/" org-id)
-   :user (env :database-user)
-   :password (env :database-password)})
+   :subname (format "//%s:%s/%s"
+                    (config :event-log-server)
+                    (config :event-log-port)
+                    org-id)
+   :user (config :event-log-user)
+   :password (config :event-log-password)})
 
-(defn reporting-spec [org-id]
-  {:subprotocol "postgresql"
-   :subname (str "//localhost:5433/" org-id)
-   :user (env :reporting-user)
-   :password (env :reporting-password)})
+(defn reporting-spec [config org-id]
+  {:classname "org.postgresql.Driver"
+   :subprotocol "postgresql"
+   :subname (format "//%s:%s/%s"
+                    (config :reporting-server)
+                    (config :reporting-port)
+                    org-id)
+   :user (config :reporting-user)
+   :password (config :reporting-password)})
+
+(defn pool
+  [db-spec]
+  (let [ds (doto (ComboPooledDataSource.)
+             (.setDriverClass (:classname db-spec))
+             (.setJdbcUrl (format "jdbc:%s:%s"
+                                  (:subprotocol db-spec)
+                                  (:subname db-spec)))
+             (.setUser (:user db-spec))
+             (.setPassword (:password db-spec))
+             (.setMaxIdleTimeExcessConnections (* 30 60))
+             (.setMaxIdleTime (* 3 60 60)))]
+    {:datasource ds}))
 
 (defn db-spec?
   [db-spec]
@@ -53,8 +114,8 @@
                [:subprotocol :subname :user :password])))
 
 (defn setup-tables
-  [org-id]
-  (let [db-spec (reporting-spec org-id)
+  [config org-id]
+  (let [db-spec (reporting-spec config org-id)
         offset-sql "CREATE TABLE IF NOT EXISTS event_offset (
                       org_id TEXT PRIMARY KEY,
                       event_offset BIGINT)"
@@ -88,8 +149,8 @@
                      :event_offset 0}))))
 
 (defn reset-tables
-  [org-id]
-  (let [db-spec (reporting-spec org-id)]
+  [config org-id]
+  (let [db-spec (reporting-spec config org-id)]
     (jdbc/with-db-connection [db-conn db-spec]
       (let [tables ["event_offset" "survey" "form" "question" "data_point"]
             raw-data-tables (->> ["SELECT tablename FROM pg_tables"]
@@ -106,15 +167,15 @@
 
 (defn start
   "Start listening from offset. Returns a function that will close the connection"
-  ([org-id event-handler]
-   (let [db-spec (reporting-spec org-id)
+  ([config org-id event-handler]
+   (let [db-spec (reporting-spec config org-id)
          offset (-> db-spec
                     (jdbc/query ["SELECT event_offset FROM event_offset WHERE org_id=?" org-id])
                     first
                     :event_offset)]
-     (start org-id (or offset 0) event-handler)))
-  ([org-id offset event-handler]
-   (let [db-spec (event-log-spec org-id)
+     (start config org-id (or offset 0) event-handler)))
+  ([config org-id offset event-handler]
+   (let [db-spec (event-log-spec config org-id)
          {:keys [chan close!]} (pg/event-chan* db-spec offset)]
      (async/thread
        (loop []
@@ -123,24 +184,31 @@
              (let [payload (:payload event)]
                (event-handler event))
              (catch Exception e
-               (errorf e "Could not handle event %s" (get-in event [:payload "eventType"]))))
+               (errorf e "Could not handle event %s at offset %s."
+                       (get-in event [:payload "eventType"])
+                       (get event :offset))))
            (recur))))
      close!)))
 
-(defn restart [org-id event-handler]
-  (let [event-log-spec (event-log-spec org-id)
-        reporting-spec (reporting-spec org-id)]
-    (reset-tables org-id)
+(defn restart [config org-id event-handler]
+  (let [event-log-spec (event-log-spec config org-id)
+        reporting-spec (reporting-spec config org-id)]
+    (reset-tables config org-id)
     (start org-id 0 event-handler)))
 
-(defn wrap-update-offset [org-id event-handler]
-  (let [db-spec (reporting-spec org-id)]
+(defn wrap-update-offset [config org-id event-handler]
+  (let [db-spec (reporting-spec config org-id)
+        db-pool (pool db-spec)]
     (fn [event]
-      (jdbc/with-db-transaction [db-conn db-spec]
-        (event-handler db-conn event)
-        (jdbc/update! db-conn :event_offset
-                      {:event_offset (:offset event)}
-                      ["org_id=?" org-id])))))
+      (event-handler db-pool event)
+      (jdbc/update! db-pool :event_offset
+                    {:event_offset (:offset event)}
+                    ["org_id=?" org-id]))))
+
+;; A map from question-id -> question.
+;; Updated on question created/updated/deleted events
+;; and used to avoid unnecessary db lookups
+(def question-cache (atom {}))
 
 (defn raw-data-table-name [form-id]
   {:pre [(integer? form-id)]}
@@ -208,6 +276,12 @@
     #{"DATE"} "date"
     #{"CASCADE"} "text[]"))
 
+(defn answer-type->db-type [answer-type]
+  (condp contains? answer-type
+    #{"VALUE" "GEO" "IMAGE" "VIDEO" "OTHER"} "text"
+    #{"DATE"} "date"
+    #{"CASCADE"} "text[]"))
+
 (defn munge-display-text [display-text]
   {:pre [(string? display-text)]}
   (-> display-text
@@ -217,18 +291,21 @@
 (defn question-column-name
   ([db-conn question-id]
    {:pre [(integer? question-id)]}
-   (if-let [{:keys [display_text identifier]}
-            (first (jdbc/query db-conn
-                               ["SELECT display_text, identifier FROM question WHERE id=?"
-                                question-id]))]
-     (question-column-name question-id identifier display_text)
+   (if-let [{:strs [displayText identifier]}
+            (or
+             (@question-cache question-id)
+             (walk/stringify-keys
+              (first (jdbc/query db-conn
+                                 ["SELECT display_text AS \"displayText\", identifier FROM question WHERE id=?"
+                                 question-id]
+                                :identifiers identity))) )]
+     (question-column-name question-id identifier displayText)
      (throw (ex-info "Could not find question" {:quesiton-id question-id}))))
   ([question-id identifier display-text]
    {:pre [(integer? question-id)
-          (string? display-text)
-          (string? identifier)]}
+          (string? display-text)]}
    (if (empty? identifier)
-     (format "\"%s_%s\"" question-id (munge-display-text display-text))
+     (format "\"%s_%s\"" (munge-display-text display-text) question-id)
      identifier)))
 
 (defmethod handle-event "questionCreated"
@@ -246,18 +323,20 @@
                    :form_id (get question "formId")
                    :display_text (get question "displayText" "")
                    :identifier (get question "identifier" "")
-                   :type (get question "questionType")})))
+                   :type (get question "questionType")})
+    (swap! question-cache assoc (get question "id") question)))
 
 (defn get-question [db-conn id]
   {:pre [(integer? id)]}
-  (walk/stringify-keys
-   (first (jdbc/query db-conn
-                      ["SELECT display_text as \"displayText\",
+  (or (@question-cache id)
+      (walk/stringify-keys
+       (first (jdbc/query db-conn
+                          ["SELECT display_text as \"displayText\",
                                identifier,
                                \"type\" as \"questionType\"
-                        FROM question WHERE id=?"
-                       id]
-                      :identifiers identity))))
+                            FROM question WHERE id=?"
+                           id]
+                          :identifiers identity)))))
 
 (defmethod handle-event "questionUpdated"
   [db-conn {:keys [payload offset] :as event}]
@@ -288,8 +367,9 @@
       (jdbc/execute! db-conn
                      [(format "ALTER TABLE IF EXISTS %s ALTER COLUMN %s TYPE %s USING NULL"
                               (raw-data-table-name (get new-question "formId"))
-                              (question-column-name db-conn id)
-                              (question-type->db-type type))]))))
+                              (question-column-name id identifier display-text)
+                              (question-type->db-type type))]))
+    (swap! question-cache assoc id new-question)))
 
 (defmethod handle-event "dataPointCreated"
   [db-conn {:keys [payload offset]}]
@@ -350,10 +430,50 @@
                    :lon lon}
                   ["id=?" (get form-instance "id")])))
 
+(defmulti sql-value (fn [answer]
+                      (answer-type->db-type (get answer "answerType"))))
+
+(defmethod sql-value "text"
+  [answer]
+  (get answer "value"))
+
+(def time-format (java.text.SimpleDateFormat. "d-M-y H:m:s z"))
+
+(defn parse-date [s]
+  (let [date (or (try (-> s Long/parseLong java.util.Date.)
+                      (catch java.lang.NumberFormatException _))
+                 (try (.parse time-format s)
+                      (catch java.text.ParseException _)))]
+    (when date
+      (java.sql.Date. (.getTime date)))))
+
+(defmethod sql-value "date"
+  [answer]
+  (let [date (parse-date (get answer "value"))]
+    date))
+
+(defmethod sql-value "text[]"
+  [answer]
+  (let [vals (string/split (get answer "value")  #"\|")
+        array-str (str "{" (string/join "," (map pr-str vals)) "}")]
+    (doto (PGobject.)
+      (.setType "text[]")
+      (.setValue array-str))))
+
+
 (defmethod handle-event "answerCreated"
   [db-conn {:keys [payload offset]}]
   (let [answer (get payload "entity")]
     (jdbc/update! db-conn (raw-data-table-name (get answer "formId"))
                   {(question-column-name db-conn (get answer "questionId"))
-                   (get answer "value")}
+                   (sql-value answer)}
                   ["id=?" (get answer "formInstanceId")])))
+
+(defn -main [config-file]
+  (let [config (edn/read-string (slurp config-file))]
+    (start config
+           "flowaglimmerofhope-hrd"
+           (wrap-update-offset config "flowaglimmerofhope-hrd" handle-event))
+    (let [t (Thread. #(do (Thread/sleep 1000) (recur)))]
+      (.setDaemon t false)
+      (.run t))))

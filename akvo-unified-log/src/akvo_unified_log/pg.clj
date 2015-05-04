@@ -65,7 +65,7 @@
 
 (defn get-from [offset]
   {:pre [(integer? offset)]}
-  (format "SELECT id, payload::text FROM event_log WHERE id >= %s ORDER BY id ASC"
+  (format "SELECT id, payload::text FROM event_log WHERE id > %s ORDER BY id ASC"
           offset))
 
 (defn event-chan [db-spec offset]
