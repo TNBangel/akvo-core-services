@@ -194,7 +194,7 @@
   (let [event-log-spec (event-log-spec config org-id)
         reporting-spec (reporting-spec config org-id)]
     (reset-tables config org-id)
-    (start org-id 0 event-handler)))
+    (start config org-id event-handler)))
 
 (defn wrap-update-offset [config org-id event-handler]
   (let [db-spec (reporting-spec config org-id)
@@ -469,11 +469,15 @@
                    (sql-value answer)}
                   ["id=?" (get answer "formInstanceId")])))
 
-(defn -main [config-file]
-  (let [config (edn/read-string (slurp config-file))]
-    (start config
-           "flowaglimmerofhope-hrd"
-           (wrap-update-offset config "flowaglimmerofhope-hrd" handle-event))
+(defn -main [start-or-restart config-file & instances]
+  (let [report-consumer (if (= "restart" start-or-restart)
+                          restart
+                          start)
+        config (edn/read-string (slurp config-file))]
+    (doseq [instance instances]
+      (report-consumer config
+                       instance
+                       (wrap-update-offset config instance handle-event)))
     (let [t (Thread. #(do (Thread/sleep 1000) (recur)))]
       (.setDaemon t false)
       (.run t))))
