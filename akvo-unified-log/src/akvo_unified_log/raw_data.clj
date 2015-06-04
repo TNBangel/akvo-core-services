@@ -1,10 +1,13 @@
 (ns akvo-unified-log.raw-data
   (:require [clojure.string :as string]
             [clojure.set :as set]
+            [clojure.edn :as edn]
             [clojure.data :as data]
             [clojure.core.async :as async]
             [akvo-unified-log.json :as json]
             [akvo-unified-log.pg :as pg]
+            [akvo-unified-log.entity-store :as entity-store]
+            [akvo.commons.config :as config]
             [clojure.pprint :refer (pprint)]
             [clojure.java.jdbc :as jdbc]
             [cheshire.core :refer (generate-string parse-string)]
@@ -12,16 +15,14 @@
             [clj-http.client :as http])
   (:import [org.postgresql.util PGobject]))
 
-(def cartodb
-  {:url "http://flowaglimmerofhope-hrd.cartodb.akvo.org:8080/api/v2/sql"
-   :api-key (env :api-key)})
-
-(env :api-key)
-
-(def db-spec {:subprotocol "postgresql"
-              :subname "//localhost/flowaglimmerofhope-hrd"
-              :user (env :database-user)
-              :password (env :database-password)})
+(defn cartodb-spec [config org-id]
+  (let [api-key (get-in config [org-id :cartodb-api-key])
+        sql-api (get-in config [org-id :cartodb-sql-api])]
+    (assert api-key "Cartodb api key is missing")
+    (assert sql-api "Cartodb sql api url is missing")
+    {:url sql-api
+     :api-key api-key
+     :org-id org-id}))
 
 (def cartodbfy-data-points "SELECT cdb_cartodbfytable ('data_point');")
 
@@ -36,10 +37,10 @@
 
 (declare queryf)
 
-(defn setup-tables []
-  (let [offset-sql "CREATE TABLE IF NOT EXISTS \"offset\" (
+(defn setup-tables [cdb-spec]
+  (let [offset-sql "CREATE TABLE IF NOT EXISTS event_offset (
                        org_id TEXT PRIMARY KEY,
-                       \"offset\" BIGINT)"
+                       event_offset BIGINT)"
         survey-sql "CREATE TABLE IF NOT EXISTS survey (
                        id BIGINT PRIMARY KEY,
                        name TEXT,
@@ -62,27 +63,23 @@
                            lon DOUBLE PRECISION,
                            name TEXT,
                            identifier TEXT);"]
-    (queryf offset-sql)
-    (queryf survey-sql)
-    (queryf form-sql)
-    (queryf question-sql)
-    (queryf data-point-sql)))
+    (queryf cdb-spec offset-sql)
+    (queryf cdb-spec survey-sql)
+    (queryf cdb-spec form-sql)
+    (queryf cdb-spec question-sql)
+    (queryf cdb-spec data-point-sql)))
 
-(comment (setup-tables)
-         (queryf update-the-geom-function))
-
-
-(defn query [q]
+(defn query [cdb-spec q]
   (println q)
-  (http/get (:url cartodb)
+  (http/get (:url cdb-spec)
             {:query-params {:q q
-                            :api_key (:api-key cartodb)}}))
+                            :api_key (:api-key cdb-spec)}}))
 
 (defn escape-str [s]
   (string/replace s "'" "''"))
 
-(defn queryf [q & args]
-  (-> (query (apply format q args))
+(defn queryf [cdb-spec q & args]
+  (-> (query cdb-spec (apply format q args))
     :body
     parse-string
     (get "rows")))
@@ -110,10 +107,12 @@
       (.replaceAll "[^A-Za-z0-9_]" "")))
 
 (defn question-column-name
-  ([question-id]
+  ([cdb-spec question-id]
    {:pre [(integer? question-id)]}
    (if-let [{:strs [display_text identifier]}
-            (-> (queryf "SELECT display_text, identifier FROM question WHERE id=%s" question-id)
+            (-> (queryf cdb-spec
+                        "SELECT display_text, identifier FROM question WHERE id=%s"
+                        question-id)
                 first)]
      (question-column-name question-id identifier display_text)
      (throw (ex-info "Could not find question" {:quesiton-id question-id}))))
@@ -126,74 +125,87 @@
      identifier)))
 
 (defmulti handle-event
-  (fn [event]
+  (fn [cdb-spec event]
     (get-in event [:payload "eventType"])))
 
-(defmethod handle-event :default [event]
+(defmethod handle-event :default [cdb-spec event]
   (println "Skipping" (get-in event [:payload "eventType"])))
 
-(defmethod handle-event "surveyGroupCreated" [{:keys [payload offset]}]
+(defmethod handle-event "surveyGroupCreated"
+  [cdb-spec {:keys [payload offset]}]
   (let [entity (get payload "entity")]
     ;; Ignore folders for now.
     (when (= (get entity "surveyGroupType")
              "SURVEY")
-      (queryf "INSERT INTO survey (id, name, public, description) VALUES (%s, '%s', %s, '%s')"
+      (queryf cdb-spec
+              "INSERT INTO survey (id, name, public, description) VALUES (%s, '%s', %s, '%s')"
               (get entity "id")
               (get entity "name")
               (get entity "public")
               (get entity "description")))))
 
-(defmethod handle-event "surveyGroupUpdated" [{:keys [payload offset]}]
+(defmethod handle-event "surveyGroupUpdated"
+  [cdb-spec {:keys [payload offset]}]
   (let [entity (get payload "entity")]
     (when (= (get entity "surveyGroupType")
              "SURVEY")
-      (queryf "UPDATE survey SET name='%s', public=%s, description='%s' WHERE id=%s"
-                (get entity "name")
-                (get entity "public")
-                (get entity "description")
-                (get entity "id")))))
+      (queryf cdb-spec
+              "UPDATE survey SET name='%s', public=%s, description='%s' WHERE id=%s"
+              (get entity "name")
+              (get entity "public")
+              (get entity "description")
+              (get entity "id")))))
 
-(defmethod handle-event "formCreated" [{:keys [payload offset]}]
+(defmethod handle-event "formCreated"
+  [cdb-spec {:keys [payload offset]}]
   (let [entity (get payload "entity")
         form-id (get entity "id")
         table-name (raw-data-table-name form-id)]
-    (queryf "CREATE TABLE IF NOT EXISTS %s (
+    (queryf cdb-spec
+            "CREATE TABLE IF NOT EXISTS %s (
                 id BIGINT UNIQUE NOT NULL,
                 data_point_id BIGINT,
                 lat DOUBLE PRECISION,
                 lon DOUBLE PRECISION);"
             table-name)
-    (queryf "INSERT INTO form (id, survey_id, name, description) VALUES (
+    (queryf cdb-spec
+            "INSERT INTO form (id, survey_id, name, description) VALUES (
                 %s, %s, '%s', '%s')"
             form-id
             (get entity "surveyId")
             (get entity "name" "")
             (get entity "description" ""))
     (when true ;; *cartodb*
-      (queryf "SELECT cdb_cartodbfytable ('%s');" table-name)
+      (queryf cdb-spec "SELECT cdb_cartodbfytable ('%s');" table-name)
       ;; TODO Figure out why why akvo_update_the_geom trigger doesn't work
-      #_(queryf "CREATE TRIGGER \"akvo_update_the_geom_trigger\"
+      #_(queryf cdb-spec
+                "CREATE TRIGGER \"akvo_update_the_geom_trigger\"
                   BEFORE UPDATE OR INSERT ON %s FOR EACH ROW
                   EXECUTE PROCEDURE akvo_update_the_geom();"
-              table-name))))
+                table-name))))
 
-(defmethod handle-event "formUpdated" [{:keys [payload offset]}]
+(defmethod handle-event "formUpdated"
+  [cdb-spec {:keys [payload offset]}]
   (let [form (get payload "entity")]
-    (queryf "UPDATE form SET survey_id=%s, name='%s', description='%s' WHERE id=%s"
+    (queryf cdb-spec
+            "UPDATE form SET survey_id=%s, name='%s', description='%s' WHERE id=%s"
             (get form "surveyId")
             (get form "name" "")
             (get form "description" "")
             (get form "id"))))
 
-(defmethod handle-event "questionCreated" [{:keys [payload offset]}]
+(defmethod handle-event "questionCreated"
+  [cdb-spec {:keys [payload offset]}]
   (let [question (get payload "entity")]
-    (queryf "ALTER TABLE IF EXISTS %s ADD COLUMN %s %s"
+    (queryf cdb-spec
+            "ALTER TABLE IF EXISTS %s ADD COLUMN %s %s"
             (raw-data-table-name (get question "formId"))
             (question-column-name (get question "id")
                                   (get question "identifier" "")
                                   (get question "displayText"))
             (question-type->db-type (get question "questionType")))
-    (queryf "INSERT INTO question (id, form_id, display_text, identifier, type)
+    (queryf cdb-spec
+            "INSERT INTO question (id, form_id, display_text, identifier, type)
                VALUES ('%s','%s','%s','%s', '%s')"
             (get question "id")
             (get question "formId")
@@ -201,52 +213,63 @@
             (get question "identifier" "")
             (get question "questionType"))))
 
-(defn get-question [id]
+(defn get-question [cdb-spec id]
   {:pre [(integer? id)]}
-  (-> "SELECT display_text as \"displayText\", identifier, \"type\" as \"questionType\" FROM question WHERE id='%s'"
-    (queryf id)
-    first))
+  (first
+   (queryf cdb-spec
+           "SELECT display_text as \"displayText\",
+                   identifier,
+                   \"type\" as \"questionType\"
+            FROM question WHERE id='%s'"
+           id)))
 
-(defmethod handle-event "questionUpdated" [{:keys [payload offset] :as event}]
+(defmethod handle-event "questionUpdated"
+  [cdb-spec {:keys [payload offset] :as event}]
   (let [new-question (get payload "entity")
         id (get new-question "id")
         type (get new-question "questionType")
         display-text (get new-question "displayText")
         identifier (get new-question "identifier" "")
-        existing-question (get-question id)
+        existing-question (get-question cdb-spec id)
         existing-type (get existing-question "questionType")
         existing-display-text (get existing-question "displayText")
         existing-identifier (get existing-question "identifier" "")]
     (when-not existing-question
       (throw (ex-info "No such question" event)))
-    (queryf "UPDATE question SET display_text='%s', identifier='%s', type='%s' WHERE id='%s'"
+    (queryf cdb-spec
+            "UPDATE question SET display_text='%s', identifier='%s', type='%s' WHERE id='%s'"
             display-text
             identifier
             type
             id)
     (when (or (not= display-text existing-display-text)
               (not= identifier existing-identifier))
-      (queryf "ALTER TABLE IF EXISTS %s RENAME COLUMN %s TO %s"
+      (queryf cdb-spec
+              "ALTER TABLE IF EXISTS %s RENAME COLUMN %s TO %s"
               (raw-data-table-name (get new-question "formId"))
               (question-column-name id existing-identifier existing-display-text)
               (question-column-name id identifier display-text)))
     (when (not= type existing-type)
-      (queryf "ALTER TABLE IF EXISTS %s ALTER COLUMN %s TYPE %s USING NULL"
+      (queryf cdb-spec
+              "ALTER TABLE IF EXISTS %s ALTER COLUMN %s TYPE %s USING NULL"
               (raw-data-table-name (get new-question "formId"))
-              (question-column-name id)
+              (question-column-name cdb-spec id)
               (question-type->db-type type)))))
 
-(defn get-location [data-point-id]
+(defn get-location [cdb-spec data-point-id]
   {:pre [(integer? data-point-id)]}
-  (first (queryf "SELECT lat, lon FROM data_point WHERE id=%s"
-                                                 data-point-id)))
+  (first (queryf cdb-spec
+                 "SELECT lat, lon FROM data_point WHERE id=%s"
+                 data-point-id)))
 
-(defmethod handle-event "formInstanceCreated" [{:keys [payload offset]}]
+(defmethod handle-event "formInstanceCreated"
+  [cdb-spec {:keys [payload offset]}]
   (let [form-instance (get payload "entity")
         data-point-id (get form-instance "dataPointId")
-        {:strs [lat lon]} (when data-point-id (get-location data-point-id))]
+        {:strs [lat lon]} (when data-point-id (get-location cdb-spec data-point-id))]
     ;; TODO Figure out why why akvo_update_the_geom trigger doesn't work
-    (queryf "INSERT INTO %s (id, data_point_id, the_geom, lat, lon) VALUES (%s, %s, %s, %s, %s)"
+    (queryf cdb-spec
+            "INSERT INTO %s (id, data_point_id, the_geom, lat, lon) VALUES (%s, %s, %s, %s, %s)"
             (raw-data-table-name (get form-instance "formId"))
             (get form-instance "id")
             (get form-instance "dataPointId" "NULL")
@@ -255,20 +278,22 @@
               "NULL")
             (or lat "NULL")
             (or lon "NULL"))
+    #_(queryf cdb-spec
+              "INSERT INTO %s (id, data_point_id, lat, lon) VALUES (%s, %s, %s, %s)"
+              (raw-data-table-name (get form-instance "formId"))
+              (get form-instance "id")
+              (get form-instance "dataPointId" "NULL")
+              (or lat "NULL")
+              (or lon "NULL"))))
 
-    #_(queryf "INSERT INTO %s (id, data_point_id, lat, lon) VALUES (%s, %s, %s, %s)"
-            (raw-data-table-name (get form-instance "formId"))
-            (get form-instance "id")
-            (get form-instance "dataPointId" "NULL")
-            (or lat "NULL")
-            (or lon "NULL"))))
-
-(defmethod handle-event "formInstanceUpdated" [{:keys [payload offset]}]
+(defmethod handle-event "formInstanceUpdated"
+  [cdb-spec {:keys [payload offset]}]
   (let [form-instance (get payload "entity")
         data-point-id (get form-instance "dataPointId")
-        {:strs [lat lon]} (when data-point-id (get-location data-point-id))]
+        {:strs [lat lon]} (when data-point-id (get-location cdb-spec data-point-id))]
     ;; TODO Figure out why why akvo_update_the_geom trigger doesn't work
-    (queryf "UPDATE %s SET data_point_id=%s, the_geom=%s, lat=%s, lon=%s WHERE id=%s"
+    (queryf cdb-spec
+            "UPDATE %s SET data_point_id=%s, the_geom=%s, lat=%s, lon=%s WHERE id=%s"
             (raw-data-table-name (get form-instance "formId"))
             (get form-instance "dataPointId" "NULL")
             (if (and lat lon)
@@ -277,17 +302,19 @@
             (or lat "NULL")
             (or lon "NULL")
             (get form-instance "id"))
+    #_(queryf cdb-spec
+              "UPDATE %s SET data_point_id=%s, lat=%s, lon=%s WHERE id=%s"
+              (raw-data-table-name (get form-instance "formId"))
+              (get form-instance "dataPointId" "NULL")
+              (or lat "NULL")
+              (or lon "NULL")
+              (get form-instance "id"))))
 
-    #_(queryf "UPDATE %s SET data_point_id=%s, lat=%s, lon=%s WHERE id=%s"
-            (raw-data-table-name (get form-instance "formId"))
-            (get form-instance "dataPointId" "NULL")
-            (or lat "NULL")
-            (or lon "NULL")
-            (get form-instance "id"))))
-
-(defmethod handle-event "dataPointCreated" [{:keys [payload offset]}]
+(defmethod handle-event "dataPointCreated"
+  [cdb-spec {:keys [payload offset]}]
   (let [data-point (get payload "entity")]
-    (queryf "INSERT INTO data_point (id, lat, lon, name, identifier) VALUES
+    (queryf cdb-spec
+            "INSERT INTO data_point (id, lat, lon, name, identifier) VALUES
                  (%s, %s, %s, '%s', '%s')"
             (get data-point "id")
             (get data-point "lat")
@@ -295,65 +322,232 @@
             (get data-point "name")
             (get data-point "identifier"))))
 
-(defmethod handle-event "dataPointUpdated" [{:keys [payload offset]}]
+(defmethod handle-event "dataPointUpdated"
+  [cdb-spec {:keys [payload offset]}]
   (let [data-point (get payload "entity")]
-    (queryf "UPDATE data_point SET lat=%s, lon=%s, name='%s', identifier='%s' WHERE id=%s"
+    (queryf cdb-spec
+            "UPDATE data_point SET lat=%s, lon=%s, name='%s', identifier='%s' WHERE id=%s"
             (get data-point "lat")
             (get data-point "lon")
             (get data-point "name")
             (get data-point "identifier")
             (get data-point "id"))))
 
-(defmethod handle-event "answerCreated" [{:keys [payload offset]}]
+(defmethod handle-event "answerCreated"
+  [cdb-spec {:keys [payload offset]}]
   (let [answer (get payload "entity")]
-    (queryf "UPDATE %s SET %s=%s WHERE id=%s"
+    (queryf cdb-spec
+            "UPDATE %s SET %s=%s WHERE id=%s"
             (raw-data-table-name (get answer "formId"))
-            (question-column-name (get answer "questionId"))
+            (question-column-name cdb-spec (get answer "questionId"))
             (format "'%s'" (get answer "value"))
             (get answer "formInstanceId"))))
 
-(defn delete-all-raw-data-tables []
-  (when-let [tables (->> (queryf "SELECT tablename FROM pg_tables")
-                 (map #(get % "tablename"))
-                 (filter #(.startsWith % "raw_data_"))
-                 seq)]
-    (queryf "DROP TABLE IF EXISTS %s;" (string/join "," tables))))
+(defn delete-all-raw-data-tables [cdb-spec]
+  (when-let [tables (->> (queryf cdb-spec "SELECT tablename FROM pg_tables")
+                         (map #(get % "tablename"))
+                         (filter #(.startsWith % "raw_data_"))
+                         seq)]
+    (queryf cdb-spec "DROP TABLE IF EXISTS %s;" (string/join "," tables))))
 
-(defn start [offset]
-  (let [{:keys [chan close!] :as events} (pg/event-chan* db-spec offset)]
+(defn get-offset [cdb-spec org-id]
+  (let [offset (-> (queryf cdb-spec
+                       "SELECT event_offset FROM event_offset WHERE org_id='%s'"
+                       org-id)
+                   first
+                   (get "event_offset"))]
+    (if (nil? offset)
+      (do (queryf cdb-spec
+                  "INSERT INTO event_offset (org_id, event_offset) VALUES ('%s', 0)"
+                  org-id)
+          0)
+      offset)))
+
+(defn wrap-update-offset [config org-id event-handler]
+  (let [cdb-spec (cartodb-spec config org-id)]
+    (fn [event]
+      (try
+        (event-handler cdb-spec event)
+        (queryf cdb-spec
+                "UPDATE event_offset SET event_offset=%s WHERE org_id='%s'"
+                (:offset event)
+                (:org-id cdb-spec))
+        (catch Exception e
+          (println "Could not handle event" (.getMessage e)))))))
+
+(defn start [config org-id event-handler]
+  (let [db-spec (pg/event-log-spec @config/settings org-id)
+        cdb-spec (cartodb-spec config org-id)
+        offset (get-offset cdb-spec org-id)
+        {:keys [chan close!] :as events} (pg/event-chan* db-spec offset)
+        event-handler (wrap-update-offset config
+                                          org-id
+                                          event-handler)]
     (async/thread
       (loop []
-          (when-let [event (async/<!! chan)]
-            (try
-              (let [payload (:payload event)]
-                (handle-event event) )
-              (catch Exception e
-                (println "Could not handle event" (.getMessage e))))
-            (recur))))
+        (when-let [event (async/<!! chan)]
+          (event-handler event)
+          (recur))))
     close!))
 
-(defn restart []
-  (queryf "DELETE FROM question")
-  (queryf "DELETE FROM survey")
-  (queryf "DELETE FROM form")
-  (queryf "DELETE FROM data_point")
-  (delete-all-raw-data-tables)
-  (start 0))
+(defn restart [config org-id event-handler]
+  (let [cdb-spec (cartodb-spec config org-id)]
+    (queryf cdb-spec "DELETE FROM event_offset")
+    (queryf cdb-spec "DELETE FROM question")
+    (queryf cdb-spec "DELETE FROM survey")
+    (queryf cdb-spec "DELETE FROM form")
+    (queryf cdb-spec "DELETE FROM data_point")
+    (delete-all-raw-data-tables cdb-spec)
+    (start config org-id event-handler)))
+
+
+
+(defn -main [start-or-restart config-file & instances]
+  (let [cartodb-consumer (if (= "restart" start-or-restart)
+                           restart
+                           start)
+        config (edn/read-string (slurp config-file))]))
+
+
+
+(def create-entity-store-sql
+  "CREATE TABLE IF NOT EXISTS entity_store (
+     entity_type TEXT NOT NULL,
+     id BIGINT NOT NULL,
+     entity TEXT NOT NULL,
+     PRIMARY KEY (entity_type, id)
+   );
+   DELETE FROM entity_store;")
+
+(defn cartodb-entity-store [cdb-spec]
+  (queryf cdb-spec create-entity-store-sql)
+  (reify entity-store/IEntityStore
+      (-get [_ entity-type id]
+        (-> (queryf cdb-spec
+                "SELECT entity FROM entity_store WHERE id=%s AND entity_type='%s'"
+                id
+                entity-type)
+            first
+            (get "entity")
+            edn/read-string))
+      (-set [_ entity-type id entity]
+        ;; TODO postgresql 9.5 will have better upsert support
+        (try (queryf cdb-spec
+                     "INSERT INTO entity_store VALUES ('%s', %s, '%s');"
+                     entity-type
+                     id
+                     (pr-str entity))
+             (catch Exception e
+               (queryf cdb-spec
+                       "UPDATE entity_store SET entity='%s' WHERE id=%s AND entity_type='%s';"
+                       (pr-str entity)
+                       id
+                       entity-type))))
+      (-del [_ entity-type id]
+        (queryf cdb-spec
+                "DELETE FROM entity_store WHERE id=%s AND entity_type='%s'"
+                id
+                entity-type))))
+
 
 (comment
 
-  (def close! (restart))
+  (let [config (edn/read-string (slurp "cartodb-config.edn"))]
+    (config/set-settings! "cartodb-config.edn")
+    (config/set-config! (@config/settings :config-folder)))
 
+
+  (queryf cdb-spec
+          "SELECT * FROM event_offset")
+
+  (get @config/configs "flowaglimmerofhope-hrd")
+
+  (:api-key env) env
+  (def cdb-spec (cartodb-spec @config/configs "akvoflow-uat1"))
+
+
+  (setup-tables cdb-spec)
+
+  (get-offset cdb-spec "akvoflow-uat1")
+
+  (def close! (restart @config/configs
+                       "flowaglimmerofhope-hrd"
+                       handle-event))
+  (def close! (start @config/configs
+                     "flowaglimmerofhope-hrd"
+                     handle-event))
+
+  (queryf cdb-spec cartodbfy-data-points)
   (close!)
 
-  (->> (queryf "SELECT tablename FROM pg_tables")
+  @config/settings
+
+
+
+
+  ((:close! ch))
+
+
+
+  (queryf cdb-spec "SELECT * FROM data_point")
+  (queryf cdb-spec cartodbfy-data-points)
+
+
+  (count
+   (->> (queryf cdb-spec "SELECT tablename FROM pg_tables")
     (map #(get % "tablename"))
-    (filter #(not (.startsWith % "pg_"))))
+    (filter #(not (.startsWith % "pg_")))))
 
 
   (Thread/setDefaultUncaughtExceptionHandler
    (reify Thread$UncaughtExceptionHandler
      (uncaughtException [this thread e]
        (.printStackTrace e))))
+
+  )
+
+
+
+
+(comment
+
+  ;; Entity Store Demo
+
+  ;; Load config
+  (let [config (edn/read-string (slurp "cartodb-config.edn"))]
+    (config/set-settings! "cartodb-config.edn")
+    (config/set-config! (@config/settings :config-folder)))
+
+  ;; cartodb spec
+  (def cdb-spec (cartodb-spec @config/configs "akvoflow-uat1"))
+
+  ;; Create an entity-store for cartodb
+  (def entity-store (cartodb-entity-store cdb-spec))
+  ;; (def entity-store (entity-store/cached-entity-store (cartodb-entity-store cdb-spec) 2))
+
+  ;; Add some entities to the store
+  (entity-store/set-entity entity-store {"entityType" "Answer"
+                                         "id" 1
+                                         "foo" "A"})
+
+  (entity-store/set-entity entity-store {"entityType" "Answer"
+                                         "id" 2
+                                         "foo" "B2"})
+
+  (entity-store/set-entity entity-store {"entityType" "Answer"
+                                         "id" 3
+                                         "foo" "C"})
+
+  ;; Get
+
+  (entity-store/get-entity entity-store "Answer" 2)
+
+  ;; Delete
+  (entity-store/delete-entity entity-store "Answer" 2)
+
+
+
+
+
 
   )

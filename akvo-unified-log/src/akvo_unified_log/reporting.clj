@@ -24,7 +24,7 @@
   (def config (edn/read-string (slurp "reporting-config.edn")))
   config
 
-  (def espec (event-log-spec config "flowaglimmerofhope-hrd"))
+  (def espec (pg/event-log-spec config "flowaglimmerofhope-hrd"))
   (jdbc/query espec ["SELECT count(*) from event_log"])
 
 
@@ -47,8 +47,9 @@
   (setup-tables config "flowaglimmerofhope-hrd")
   (reset-tables config "flowaglimmerofhope-hrd")
 
-  (def close! (restart "flowaglimmerofhope-hrd"
-                       (wrap-update-offset "flowaglimmerofhope-hrd" handle-event)))
+  (def close! (restart config
+                       "flowaglimmerofhope-hrd"
+                       (wrap-update-offset config "flowaglimmerofhope-hrd" handle-event)))
 
   (def close! (start config
                      "flowaglimmerofhope-hrd"
@@ -74,15 +75,6 @@
 
 
   )
-
-(defn event-log-spec [config org-id]
-  {:subprotocol "postgresql"
-   :subname (format "//%s:%s/%s"
-                    (config :event-log-server)
-                    (config :event-log-port)
-                    org-id)
-   :user (config :event-log-user)
-   :password (config :event-log-password)})
 
 (defn reporting-spec [config org-id]
   {:classname "org.postgresql.Driver"
@@ -175,7 +167,7 @@
                     :event_offset)]
      (start config org-id (or offset 0) event-handler)))
   ([config org-id offset event-handler]
-   (let [db-spec (event-log-spec config org-id)
+   (let [db-spec (pg/event-log-spec config org-id)
          {:keys [chan close!]} (pg/event-chan* db-spec offset)]
      (async/thread
        (loop []
@@ -191,7 +183,7 @@
      close!)))
 
 (defn restart [config org-id event-handler]
-  (let [event-log-spec (event-log-spec config org-id)
+  (let [event-log-spec (pg/event-log-spec config org-id)
         reporting-spec (reporting-spec config org-id)]
     (reset-tables config org-id)
     (start config org-id event-handler)))
@@ -461,13 +453,20 @@
       (.setValue array-str))))
 
 
-(defmethod handle-event "answerCreated"
-  [db-conn {:keys [payload offset]}]
+(defn answer-created-or-updated [db-conn {:keys [payload]}]
   (let [answer (get payload "entity")]
     (jdbc/update! db-conn (raw-data-table-name (get answer "formId"))
                   {(question-column-name db-conn (get answer "questionId"))
                    (sql-value answer)}
                   ["id=?" (get answer "formInstanceId")])))
+
+(defmethod handle-event "answerCreated"
+  [db-conn event]
+  (answer-created-or-updated db-conn event))
+
+(defmethod handle-event "answerUpdated"
+  [db-conn event]
+  (answer-created-or-updated db-conn event))
 
 (defn -main [start-or-restart config-file & instances]
   (let [report-consumer (if (= "restart" start-or-restart)

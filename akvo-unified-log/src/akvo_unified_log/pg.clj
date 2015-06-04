@@ -4,6 +4,17 @@
             [cheshire.core :as json])
   (:import [java.util.concurrent Executors TimeUnit]))
 
+;; TODO config is misleading
+(defn event-log-spec [config org-id]
+  (assert (not (empty? config)) "Config map is empty")
+  {:subprotocol "postgresql"
+   :subname (format "//%s:%s/%s"
+                    (config :event-log-server)
+                    (config :event-log-port)
+                    org-id)
+   :user (config :event-log-user)
+   :password (config :event-log-password)})
+
 (def get-by-id
   "SELECT payload::text FROM event_log WHERE id = %s")
 
@@ -67,24 +78,6 @@
   {:pre [(integer? offset)]}
   (format "SELECT id, payload::text FROM event_log WHERE id > %s ORDER BY id ASC"
           offset))
-
-(defn event-chan [db-spec offset]
-  (let [chan (async/chan)]
-    (async/thread
-      (with-open [conn (jdbc/get-connection db-spec)]
-        (.setAutoCommit conn false)
-        (with-open [stmt (.createStatement conn)]
-          (.setFetchSize stmt 300)
-          (with-open [result-set (.executeQuery stmt (get-from offset))]
-            (loop []
-              (if (.next result-set)
-                (do
-                  (async/>!! chan {:offset (.getLong result-set 1)
-                                   :payload (json/parse-string (.getString result-set 2))})
-                  (recur))
-                (do
-                  (async/close! chan))))))))
-    chan))
 
 (defn event-chan* [db-spec offset]
   {:pre [(integer? offset)]}
