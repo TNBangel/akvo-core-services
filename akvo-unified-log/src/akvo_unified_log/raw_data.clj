@@ -284,6 +284,7 @@
               "NULL")
             (or lat "NULL")
             (or lon "NULL"))
+    (es/set-entity entity-store "FORM_INSTANCE" (get form-instance "id"))
     #_(queryf cdb-spec
               "INSERT INTO %s (id, data_point_id, lat, lon) VALUES (%s, %s, %s, %s)"
               (raw-data-table-name (get form-instance "formId"))
@@ -308,6 +309,7 @@
             (or lat "NULL")
             (or lon "NULL")
             (get form-instance "id"))
+    (es/set-entity entity-store "FORM_INSTANCE" (get form-instance "id"))
     #_(queryf cdb-spec
               "UPDATE %s SET data_point_id=%s, lat=%s, lon=%s WHERE id=%s"
               (raw-data-table-name (get form-instance "formId"))
@@ -315,6 +317,17 @@
               (or lat "NULL")
               (or lon "NULL")
               (get form-instance "id"))))
+
+(defmethod handle-event "formInstanceDeleted"
+  [cdb-spec entity-store {:keys [payload offset]}]
+  (let [id (get-in payload ["entity" "id"])]
+    (when-let [form-instance (es/get-entity entity-store "FORM_INSTANCE" id)]
+      (let [form-id (get form-instance "formId")]
+        (queryf cdb-spec
+                "DELETE FROM %s WHERE id=%s"
+                (raw-data-table-name form-id)
+                id)
+        (es/delete-entity entity-store "FORM_INSTANCE" id)))))
 
 (defmethod handle-event "dataPointCreated"
   [cdb-spec entity-store {:keys [payload offset]}]
