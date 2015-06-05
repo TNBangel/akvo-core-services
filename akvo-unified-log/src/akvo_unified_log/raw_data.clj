@@ -339,6 +339,13 @@
             (get data-point "identifier")
             (get data-point "id"))))
 
+(defmethod handle-event "dataPointDeleted"
+  [cdb-spec entity-store {:keys [payload offset]}]
+  (let [data-point-id (get-in payload ["entity" "id"])]
+    (queryf cdb-spec
+            "DELETE FROM data_point WHERE id=%s"
+            data-point-id)))
+
 (defn answer-upsert [cdb-spec entity-store {:keys [payload]}]
   (let [answer (get payload "entity")]
     (queryf cdb-spec
