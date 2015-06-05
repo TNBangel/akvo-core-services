@@ -6,7 +6,7 @@
             [clojure.core.async :as async]
             [akvo-unified-log.json :as json]
             [akvo-unified-log.pg :as pg]
-            [akvo-unified-log.entity-store :as entity-store]
+            [akvo-unified-log.entity-store :as es]
             [akvo.commons.config :as config]
             [clojure.pprint :refer (pprint)]
             [clojure.java.jdbc :as jdbc]
@@ -62,12 +62,18 @@
                            lat DOUBLE PRECISION,
                            lon DOUBLE PRECISION,
                            name TEXT,
-                           identifier TEXT);"]
+                           identifier TEXT);"
+        entity-store-sql "CREATE TABLE IF NOT EXISTS entity_store (
+                             entity_type TEXT NOT NULL,
+                             id BIGINT NOT NULL,
+                             entity TEXT NOT NULL,
+                             PRIMARY KEY (entity_type, id));"]
     (queryf cdb-spec offset-sql)
     (queryf cdb-spec survey-sql)
     (queryf cdb-spec form-sql)
     (queryf cdb-spec question-sql)
-    (queryf cdb-spec data-point-sql)))
+    (queryf cdb-spec data-point-sql)
+    (queryf cdb-spec entity-store-sql)))
 
 (defn query [cdb-spec q]
   (println q)
@@ -125,14 +131,14 @@
      identifier)))
 
 (defmulti handle-event
-  (fn [cdb-spec event]
+  (fn [cdb-spec entity-store event]
     (get-in event [:payload "eventType"])))
 
-(defmethod handle-event :default [cdb-spec event]
+(defmethod handle-event :default [cdb-spec entity-store event]
   (println "Skipping" (get-in event [:payload "eventType"])))
 
 (defmethod handle-event "surveyGroupCreated"
-  [cdb-spec {:keys [payload offset]}]
+  [cdb-spec entity-store {:keys [payload offset]}]
   (let [entity (get payload "entity")]
     ;; Ignore folders for now.
     (when (= (get entity "surveyGroupType")
@@ -145,7 +151,7 @@
               (get entity "description")))))
 
 (defmethod handle-event "surveyGroupUpdated"
-  [cdb-spec {:keys [payload offset]}]
+  [cdb-spec entity-store {:keys [payload offset]}]
   (let [entity (get payload "entity")]
     (when (= (get entity "surveyGroupType")
              "SURVEY")
@@ -157,7 +163,7 @@
               (get entity "id")))))
 
 (defmethod handle-event "formCreated"
-  [cdb-spec {:keys [payload offset]}]
+  [cdb-spec entity-store {:keys [payload offset]}]
   (let [entity (get payload "entity")
         form-id (get entity "id")
         table-name (raw-data-table-name form-id)]
@@ -185,7 +191,7 @@
                 table-name))))
 
 (defmethod handle-event "formUpdated"
-  [cdb-spec {:keys [payload offset]}]
+  [cdb-spec entity-store {:keys [payload offset]}]
   (let [form (get payload "entity")]
     (queryf cdb-spec
             "UPDATE form SET survey_id=%s, name='%s', description='%s' WHERE id=%s"
@@ -195,7 +201,7 @@
             (get form "id"))))
 
 (defmethod handle-event "questionCreated"
-  [cdb-spec {:keys [payload offset]}]
+  [cdb-spec entity-store {:keys [payload offset]}]
   (let [question (get payload "entity")]
     (queryf cdb-spec
             "ALTER TABLE IF EXISTS %s ADD COLUMN %s %s"
@@ -224,7 +230,7 @@
            id)))
 
 (defmethod handle-event "questionUpdated"
-  [cdb-spec {:keys [payload offset] :as event}]
+  [cdb-spec entity-store {:keys [payload offset] :as event}]
   (let [new-question (get payload "entity")
         id (get new-question "id")
         type (get new-question "questionType")
@@ -263,7 +269,7 @@
                  data-point-id)))
 
 (defmethod handle-event "formInstanceCreated"
-  [cdb-spec {:keys [payload offset]}]
+  [cdb-spec entity-store {:keys [payload offset]}]
   (let [form-instance (get payload "entity")
         data-point-id (get form-instance "dataPointId")
         {:strs [lat lon]} (when data-point-id (get-location cdb-spec data-point-id))]
@@ -287,7 +293,7 @@
               (or lon "NULL"))))
 
 (defmethod handle-event "formInstanceUpdated"
-  [cdb-spec {:keys [payload offset]}]
+  [cdb-spec entity-store {:keys [payload offset]}]
   (let [form-instance (get payload "entity")
         data-point-id (get form-instance "dataPointId")
         {:strs [lat lon]} (when data-point-id (get-location cdb-spec data-point-id))]
@@ -311,7 +317,7 @@
               (get form-instance "id"))))
 
 (defmethod handle-event "dataPointCreated"
-  [cdb-spec {:keys [payload offset]}]
+  [cdb-spec entity-store {:keys [payload offset]}]
   (let [data-point (get payload "entity")]
     (queryf cdb-spec
             "INSERT INTO data_point (id, lat, lon, name, identifier) VALUES
@@ -323,7 +329,7 @@
             (get data-point "identifier"))))
 
 (defmethod handle-event "dataPointUpdated"
-  [cdb-spec {:keys [payload offset]}]
+  [cdb-spec entity-store {:keys [payload offset]}]
   (let [data-point (get payload "entity")]
     (queryf cdb-spec
             "UPDATE data_point SET lat=%s, lon=%s, name='%s', identifier='%s' WHERE id=%s"
@@ -333,15 +339,34 @@
             (get data-point "identifier")
             (get data-point "id"))))
 
-(defmethod handle-event "answerCreated"
-  [cdb-spec {:keys [payload offset]}]
+(defn answer-upsert [cdb-spec entity-store {:keys [payload]}]
   (let [answer (get payload "entity")]
     (queryf cdb-spec
             "UPDATE %s SET %s=%s WHERE id=%s"
             (raw-data-table-name (get answer "formId"))
             (question-column-name cdb-spec (get answer "questionId"))
             (format "'%s'" (get answer "value"))
-            (get answer "formInstanceId"))))
+            (get answer "formInstanceId"))
+    (es/set-entity entity-store answer)))
+
+(defmethod handle-event "answerCreated"
+  [cdb-spec entity-store event]
+  (answer-upsert cdb-spec event))
+
+(defmethod handle-event "answerUpdated"
+  [cdb-spec entity-store event]
+  (answer-upsert cdb-spec event))
+
+(defmethod handle-event "answerDeleted"
+  [cdb-spec entity-store {:keys [payload]}]
+  (let [id (get-in payload ["entity" "id"])]
+    (when-let [answer (es/get-entity entity-store "ANSWER" id)]
+      (queryf cdb-spec
+              "UPDATE %s SET %s=NULL WHERE id=%s"
+              (raw-data-table-name (get answer "formId"))
+              (question-column-name cdb-spec (get answer "questionId"))
+              (get answer "formInstanceId"))
+      (es/delete-entity entity-store "ANSWER" id))))
 
 (defn delete-all-raw-data-tables [cdb-spec]
   (when-let [tables (->> (queryf cdb-spec "SELECT tablename FROM pg_tables")
@@ -363,65 +388,20 @@
           0)
       offset)))
 
-(defn wrap-update-offset [config org-id event-handler]
-  (let [cdb-spec (cartodb-spec config org-id)]
-    (fn [event]
-      (try
-        (event-handler cdb-spec event)
-        (queryf cdb-spec
-                "UPDATE event_offset SET event_offset=%s WHERE org_id='%s'"
-                (:offset event)
-                (:org-id cdb-spec))
-        (catch Exception e
-          (println "Could not handle event" (.getMessage e)))))))
-
-(defn start [config org-id event-handler]
-  (let [db-spec (pg/event-log-spec @config/settings org-id)
-        cdb-spec (cartodb-spec config org-id)
-        offset (get-offset cdb-spec org-id)
-        {:keys [chan close!] :as events} (pg/event-chan* db-spec offset)
-        event-handler (wrap-update-offset config
-                                          org-id
-                                          event-handler)]
-    (async/thread
-      (loop []
-        (when-let [event (async/<!! chan)]
-          (event-handler event)
-          (recur))))
-    close!))
-
-(defn restart [config org-id event-handler]
-  (let [cdb-spec (cartodb-spec config org-id)]
-    (queryf cdb-spec "DELETE FROM event_offset")
-    (queryf cdb-spec "DELETE FROM question")
-    (queryf cdb-spec "DELETE FROM survey")
-    (queryf cdb-spec "DELETE FROM form")
-    (queryf cdb-spec "DELETE FROM data_point")
-    (delete-all-raw-data-tables cdb-spec)
-    (start config org-id event-handler)))
-
-
-
-(defn -main [start-or-restart config-file & instances]
-  (let [cartodb-consumer (if (= "restart" start-or-restart)
-                           restart
-                           start)
-        config (edn/read-string (slurp config-file))]))
-
-
-
-(def create-entity-store-sql
-  "CREATE TABLE IF NOT EXISTS entity_store (
-     entity_type TEXT NOT NULL,
-     id BIGINT NOT NULL,
-     entity TEXT NOT NULL,
-     PRIMARY KEY (entity_type, id)
-   );
-   DELETE FROM entity_store;")
+(defn wrap-update-offset [cdb-spec org-id entity-store event-handler]
+  (fn [event]
+    (try
+      (event-handler cdb-spec entity-store event)
+      (queryf cdb-spec
+              "UPDATE event_offset SET event_offset=%s WHERE org_id='%s'"
+              (:offset event)
+              (:org-id cdb-spec))
+      (catch Exception e
+        (println "Could not handle event" (.getMessage e))))))
 
 (defn cartodb-entity-store [cdb-spec]
-  (queryf cdb-spec create-entity-store-sql)
-  (reify entity-store/IEntityStore
+  ;; (queryf cdb-spec create-entity-store-sql)
+  (reify es/IEntityStore
       (-get [_ entity-type id]
         (-> (queryf cdb-spec
                 "SELECT entity FROM entity_store WHERE id=%s AND entity_type='%s'"
@@ -449,6 +429,45 @@
                 id
                 entity-type))))
 
+(defn start [config org-id event-handler]
+  (let [db-spec (pg/event-log-spec @config/settings org-id)
+        cdb-spec (cartodb-spec config org-id)
+        entity-store (es/cached-entity-store
+                      (cartodb-entity-store cdb-spec)
+                      1e5)
+        offset (get-offset cdb-spec org-id)
+        {:keys [chan close!] :as events} (pg/event-chan* db-spec offset)
+        event-handler (wrap-update-offset cdb-spec
+                                          org-id
+                                          entity-store
+                                          event-handler)]
+    (async/thread
+      (loop []
+        (when-let [event (async/<!! chan)]
+          (event-handler event)
+          (recur))))
+    close!))
+
+(defn restart [config org-id event-handler]
+  (let [cdb-spec (cartodb-spec config org-id)]
+    (queryf cdb-spec "DELETE FROM event_offset")
+    (queryf cdb-spec "DELETE FROM question")
+    (queryf cdb-spec "DELETE FROM survey")
+    (queryf cdb-spec "DELETE FROM form")
+    (queryf cdb-spec "DELETE FROM data_point")
+    (queryf cdb-spec "DELETE FROM entity_store")
+    (delete-all-raw-data-tables cdb-spec)
+    (start config org-id event-handler)))
+
+(defn -main [start-or-restart config-file & instances]
+  (let [cartodb-consumer (if (= "restart" start-or-restart)
+                           restart
+                           start)
+        config (edn/read-string (slurp config-file))]))
+
+
+
+
 
 (comment
 
@@ -456,23 +475,16 @@
     (config/set-settings! "cartodb-config.edn")
     (config/set-config! (@config/settings :config-folder)))
 
-
-  (queryf cdb-spec
-          "SELECT * FROM event_offset")
-
-  (get @config/configs "flowaglimmerofhope-hrd")
-
-  (:api-key env) env
   (def cdb-spec (cartodb-spec @config/configs "akvoflow-uat1"))
-
 
   (setup-tables cdb-spec)
 
   (get-offset cdb-spec "akvoflow-uat1")
 
   (def close! (restart @config/configs
-                       "flowaglimmerofhope-hrd"
+                       "akvoflow-uat1"
                        handle-event))
+
   (def close! (start @config/configs
                      "flowaglimmerofhope-hrd"
                      handle-event))

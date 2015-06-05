@@ -13,9 +13,9 @@
 
 (defn set-entity [es val]
   {:pre [(map? val)
-         (string? (get val "entityType"))
+         (string? (get val "type"))
          (integer? (get val "id"))]}
-  (-set es (get val "entityType") (get val "id") val))
+  (-set es (get val "type") (get val "id") val))
 
 (defn delete-entity [es kind id]
   {:pre [(string? kind)
