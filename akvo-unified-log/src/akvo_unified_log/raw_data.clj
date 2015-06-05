@@ -61,6 +61,7 @@
                            id BIGINT PRIMARY KEY,
                            lat DOUBLE PRECISION,
                            lon DOUBLE PRECISION,
+                           survey_id BIGINT,
                            name TEXT,
                            identifier TEXT);"
         entity-store-sql "CREATE TABLE IF NOT EXISTS entity_store (
@@ -333,11 +334,12 @@
   [cdb-spec entity-store {:keys [payload offset]}]
   (let [data-point (get payload "entity")]
     (queryf cdb-spec
-            "INSERT INTO data_point (id, lat, lon, name, identifier) VALUES
-                 (%s, %s, %s, '%s', '%s')"
+            "INSERT INTO data_point (id, lat, lon, survey_id, name, identifier) VALUES
+                 (%s, %s, %s, %s, '%s', '%s')"
             (get data-point "id")
             (get data-point "lat")
             (get data-point "lon")
+            (get data-point "surveyId")
             (get data-point "name")
             (get data-point "identifier"))))
 
@@ -345,9 +347,10 @@
   [cdb-spec entity-store {:keys [payload offset]}]
   (let [data-point (get payload "entity")]
     (queryf cdb-spec
-            "UPDATE data_point SET lat=%s, lon=%s, name='%s', identifier='%s' WHERE id=%s"
+            "UPDATE data_point SET lat=%s, lon=%s, survey_id=%s, name='%s', identifier='%s' WHERE id=%s"
             (get data-point "lat")
             (get data-point "lon")
+            (get data-point "surveyId")
             (get data-point "name")
             (get data-point "identifier")
             (get data-point "id"))))
@@ -474,7 +477,7 @@
     (queryf cdb-spec "DELETE FROM question")
     (queryf cdb-spec "DELETE FROM survey")
     (queryf cdb-spec "DELETE FROM form")
-    (queryf cdb-spec "DELETE FROM data_point")
+;;    (queryf cdb-spec "DELETE FROM data_point")
     (queryf cdb-spec "DELETE FROM entity_store")
     (delete-all-raw-data-tables cdb-spec)
     (start config org-id event-handler)))
@@ -484,10 +487,6 @@
                            restart
                            start)
         config (edn/read-string (slurp config-file))]))
-
-
-
-
 
 (comment
 
@@ -512,18 +511,8 @@
   (queryf cdb-spec cartodbfy-data-points)
   (close!)
 
-  @config/settings
-
-
-
-
-  ((:close! ch))
-
-
-
   (queryf cdb-spec "SELECT * FROM data_point")
   (queryf cdb-spec cartodbfy-data-points)
-
 
   (count
    (->> (queryf cdb-spec "SELECT tablename FROM pg_tables")
