@@ -284,7 +284,7 @@
               "NULL")
             (or lat "NULL")
             (or lon "NULL"))
-    (es/set-entity entity-store "FORM_INSTANCE" (get form-instance "id"))
+    (es/set-entity entity-store form-instance)
     #_(queryf cdb-spec
               "INSERT INTO %s (id, data_point_id, lat, lon) VALUES (%s, %s, %s, %s)"
               (raw-data-table-name (get form-instance "formId"))
@@ -309,7 +309,7 @@
             (or lat "NULL")
             (or lon "NULL")
             (get form-instance "id"))
-    (es/set-entity entity-store "FORM_INSTANCE" (get form-instance "id"))
+    (es/set-entity entity-store form-instance)
     #_(queryf cdb-spec
               "UPDATE %s SET data_point_id=%s, lat=%s, lon=%s WHERE id=%s"
               (raw-data-table-name (get form-instance "formId"))
@@ -371,11 +371,11 @@
 
 (defmethod handle-event "answerCreated"
   [cdb-spec entity-store event]
-  (answer-upsert cdb-spec event))
+  (answer-upsert cdb-spec entity-store event))
 
 (defmethod handle-event "answerUpdated"
   [cdb-spec entity-store event]
-  (answer-upsert cdb-spec event))
+  (answer-upsert cdb-spec entity-store event))
 
 (defmethod handle-event "answerDeleted"
   [cdb-spec entity-store {:keys [payload]}]
@@ -535,51 +535,5 @@
    (reify Thread$UncaughtExceptionHandler
      (uncaughtException [this thread e]
        (.printStackTrace e))))
-
-  )
-
-
-
-
-(comment
-
-  ;; Entity Store Demo
-
-  ;; Load config
-  (let [config (edn/read-string (slurp "cartodb-config.edn"))]
-    (config/set-settings! "cartodb-config.edn")
-    (config/set-config! (@config/settings :config-folder)))
-
-  ;; cartodb spec
-  (def cdb-spec (cartodb-spec @config/configs "akvoflow-uat1"))
-
-  ;; Create an entity-store for cartodb
-  (def entity-store (cartodb-entity-store cdb-spec))
-  ;; (def entity-store (entity-store/cached-entity-store (cartodb-entity-store cdb-spec) 2))
-
-  ;; Add some entities to the store
-  (entity-store/set-entity entity-store {"entityType" "Answer"
-                                         "id" 1
-                                         "foo" "A"})
-
-  (entity-store/set-entity entity-store {"entityType" "Answer"
-                                         "id" 2
-                                         "foo" "B2"})
-
-  (entity-store/set-entity entity-store {"entityType" "Answer"
-                                         "id" 3
-                                         "foo" "C"})
-
-  ;; Get
-
-  (entity-store/get-entity entity-store "Answer" 2)
-
-  ;; Delete
-  (entity-store/delete-entity entity-store "Answer" 2)
-
-
-
-
-
 
   )
