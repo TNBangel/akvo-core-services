@@ -1,177 +1,88 @@
 (ns akvo-unified-log.core
-  (:require [akvo-unified-log.gae :as gae]
-            [akvo-unified-log.json :as json]
-            [akvo-unified-log.scheduler :as scheduler]
+  (:require [clojure.tools.cli :as cli]
+            [clojure.edn :as edn]
+            [clojure.set :as set]
             [clojure.string :as str]
-            [clojure.java.io :as io]
-            [clojure.pprint :refer (pprint)]
-            [clojure.java.jdbc :as jdbc]
-            [taoensso.timbre :refer (debugf infof warnf errorf fatalf error)]
-            [liberator.core :refer (resource defresource)]
+            [clojure.pprint :as pp]
+            [compojure.core :refer (defroutes GET routes)]
             [ring.adapter.jetty :as jetty]
-            [ring.middleware.params :refer (wrap-params)]
-            [ring.middleware.json :refer (wrap-json-body)]
-            [compojure.core :refer (defroutes ANY)]
-            [yesql.core :refer (defqueries)]
-            [cheshire.core :refer (generate-string)]
-            [environ.core :refer (env)]
-            [clj-time.core :as t])
-  (:import [java.util.concurrent Executors TimeUnit]
-           [org.postgresql.util PGobject]
-           [com.github.fge.jsonschema.main JsonSchema JsonSchemaFactory]
-           [com.fasterxml.jackson.databind JsonNode]
-           [com.fasterxml.jackson.databind ObjectMapper]))
+            [akvo-unified-log.consumer :as consumer]
+            [akvo-unified-log.raw-data :as cartodb]
+            [akvo.commons.config :as config]
+            [taoensso.timbre :as timbre]))
+
+(def cli-options [[nil "--consumer CONSUMER" "Consumer to run. One of reporting/cartodb"
+                   :validate [(partial #{:reporting :cartodb})
+                              "Must be either 'reporting' or 'cartodb'"]
+                   :parse-fn keyword]
+
+                  [nil "--settings SETTINGS_FILE" "Path to settings file"]
+
+                  [nil "--log-level LOGLEVEL" "Log level. One of trace/debug/info/warn/error"
+                   :validate [(partial #{:trace :debug :info :warn :error})
+                              "Must be one of trace/debug/info/warn/error"]
+                   :default :warn
+                   :parse-fn keyword]
+
+                  [nil "--restart" "Restart all consumers from offset 0"
+                   :id :restart?]
+                  ["-h" "--help" "Show cli help summary"]])
+
+(defn help [{:keys [summary]}]
+  (println "-----------------------------------")
+  (println "The following options are available")
+  (println summary))
+
+(defn validate-cli-opts [{:keys [options errors org-ids]
+                          :as cli}]
+  (letfn [(abort [msg]
+            (println msg)
+            (help cli)
+            (System/exit 1))]
+    (cond
+      (not (empty? errors))
+      (abort (apply str errors))
+
+      (empty? org-ids)
+      (abort "No org-ids specified")
+
+      (nil? (:settings options))
+      (abort "No settings file specified")
+
+      (nil? (:consumer options))
+      (abort "No consumer specified")
+
+      :else cli)))
+
+(defn app [opts]
+  (routes
+   (GET "/" []
+        (format "<pre>%s</pre>"
+                (str/escape (with-out-str (pp/pprint opts))
+                            {\< "&lt;" \> "&gt;"})))))
 
 
-(defonce scheduler (Executors/newScheduledThreadPool 64))
+(defn -main [& args]
+  (let [cli-opts (cli/parse-opts args cli-options)]
+    (if (get-in cli-opts [:options :help])
+      (help cli-opts)
+      (let [opts (validate-cli-opts (set/rename-keys cli-opts {:arguments :org-ids}))
+            ;; flatten
+            opts (merge (dissoc opts :options :summary :errors)
+                        (:options opts))]
+        (timbre/set-level! (:log-level opts))
+        (config/set-settings! (:settings opts))
+        (config/set-config! (@config/settings :config-folder))
+        (condp :consumer opts
+          :cartodb
+          (doseq [org-id (:org-ids opts)]
+            (consumer/start (cartodb/consumer opts org-id)))
 
-
-;; A map of registered instances. Maps an org-id (which is also the db
-;; name of that instance) to a map of information about the state of
-;; the instance. e.g.
-;; {\"flowaglimmerofhope-hrd\" {:org-id \"flowaglimmerofhope-hrd\"
-;;                              :url \"flowaglimmerofhope.appspot.com\"
-;;                              :last-notification #<DateTime ...>
-;;                              :last-entity-count 12
-;;                              :total-entity-count 5321
-;;                              :started #<DateTime ...>
-;;                              :status :idle}}
-(defonce instances (atom {}))
-
-(defn db-spec [org-id]
-  {:subprotocol "postgresql"
-   :subname (format "//localhost/%s" org-id)
-   :user (env :database-user)
-   :password (env :database-password)})
-
-(defqueries "db.sql")
-
-;; TODO Cache installer so we don't need to re-autheniticate each time
-(defn fetch-data [instance-url since]
-  (let [installer (-> instance-url gae/remote-api-options gae/install)
-        ds (gae/datastore)
-        events (->> (gae/fetch-data-iterator ds since 1000)
-                 iterator-seq
-                 (map #(or (.getProperty % "payload")
-                           (.getValue (.getProperty % "payloadText"))))
-                 ;; We need two representations, one for validation/sorting and one for postgres
-                 (map (fn [s]
-                        {:string s
-                         :jsonb (json/jsonb s)
-                         :json-node (json/json-node s)}))
-                 ;; TODO We fetch sorted by createdDateTime so this isn't necessary?
-                 (sort-by #(-> % :json-node (.get "context") (.get "timestamp") .longValue)))]
-    (.uninstall installer)
-    events))
-
-(defn last-fetch-date [db-spec]
-  (let [ts (first (last-timestamp db-spec))]
-    (java.util.Date. (long (or (:timestamp ts) 0)))))
-
-(defn validate-events [events]
-  (doseq [event events]
-    (when-not (json/valid? event)
-      (warnf "Event %s does not follow schema" event))))
-
-;; TODO bulk insert
-(defn insert-events [db-spec events]
-  (doseq [event events]
-    (insert<! db-spec event)))
-
-(defn fetch-and-insert-new-events
-  "Fetch and insert new events for org-id. Return the number of events inserted"
-  [db-spec org-id url]
-  (let [events (fetch-data url (last-fetch-date db-spec))]
-    (validate-events (map :json-node events))
-    (insert-events db-spec (map :jsonb events))
-    (count events)))
-
-(defn fetch-and-insert-task [org-id]
-  (let [db-spec (db-spec org-id)]
-    (fn []
-      (try
-        (if-let [instance-data (get @instances org-id)]
-          ;; Figure out if we want to continue data fetching or cancel
-          ;; the task and wait for notification from the GAE instance
-          (let [{:keys [url last-notification last-event-count]} instance-data
-                now (t/now)]
-            (if (or (pos? (or last-event-count 0))
-                    (t/within? (t/interval (t/minus now (t/minutes 5)) now)
-                               last-notification))
-              (let [event-count (fetch-and-insert-new-events db-spec org-id url)]
-                (debugf "Inserted %s events into %s" event-count org-id)
-                (swap! instances assoc-in [org-id :last-event-count] event-count)
-                (swap! instances update-in [org-id :total-event-count] (fnil + 0) event-count))
-              (do
-                (infof "No new events for %s and no notifications from GAE. Halting data fetching for now" org-id)
-                (scheduler/cancel-task org-id))))
-          (do
-            (warnf "No instance data for %s. Cancelling task" org-id)
-            (scheduler/cancel-task org-id)))
-        (catch Exception e
-          (warnf "Unexpected exception during fetch/insert: %s" (.getMessage e))
-          (error e)
-          (warnf "Cancelling task for %s" org-id)
-          (swap! instances dissoc org-id)
-          (scheduler/cancel-task org-id))))))
-
-(defn json-content-type? [ctx]
-  (let [content-type (get-in ctx [:request :headers "content-type"])]
-    (if (= content-type "application/json")
-      true
-      (do (warnf "Invalid content type: %s" content-type)
-          false))))
-
-(defroutes app
-  (ANY "/status" []
-       (resource
-        :available-media-types ["text/html"]
-        :allowed-methods [:get]
-        :handle-ok (fn [ctx]
-                     (format "<pre>%s</pre>"
-                             (str/escape (with-out-str (pprint @instances))
-                                         {\< "&lt;" \> "&gt;"})))))
-  (ANY "/event-notification" []
-       (resource
-        :available-media-types ["application/json"]
-        :allowed-methods [:post]
-        :known-content-type? json-content-type?
-        :processable? (fn [ctx]
-                        (let [data (-> ctx :request :body)]
-                          (if (and (contains? data "orgId")
-                                   (contains? data "url"))
-                            true
-                            (do (warnf "Invalid notification request body: %s" data)
-                                false))))
-        :post! (fn [ctx]
-                 (let [{:strs [orgId url] :as event-notification} (-> ctx :request :body)]
-                   (debugf "Received notification %s" event-notification)
-                   (swap! instances update-in [orgId] merge {:org-id orgId
-                                                             :url url
-                                                             :last-notification (t/now)})
-                   (if (scheduler/running? orgId)
-                     (debugf "ScheduledFuture is already running for %s" orgId)
-                     (do
-                       (infof "Scheduling data fetching for %s" orgId)
-                       (scheduler/schedule-task orgId (fetch-and-insert-task orgId))))))
-        :new? false))
-
-  (ANY "/events/:org-id" [org-id]
-       (resource
-        :available-media-types ["application/json"]
-        :allowed-methods [:post]
-        :known-content-type? json-content-type?
-        :post! (fn [ctx]
-                 (doseq [event-string (map generate-string (-> ctx :request :body))]
-                   (let [jsonb (json/jsonb event-string)
-                         json-node (json/json-node event-string)]
-                     (if (json/valid? json-node)
-                       (insert-events (db-spec org-id) [jsonb])
-                       (warnf "Invalid event %s" event-string))))))))
-
-(defn -main [& [port]]
-  (let [port (Integer. (or port (env :port) 3030))]
-    (jetty/run-jetty (-> #'app
-                       wrap-params
-                       wrap-json-body)
-                     {:port port :join? false})))
+          :reporting
+          (doseq [org-id (:org-ids opts)]
+            (throw (ex-info "TODO" {}))
+            ;;(consumer/start (reporting/consumer opts org-id))
+            ))
+        (let [port (Integer. 3030)]
+          (jetty/run-jetty (app opts)
+                           {:port port :join? false}))))))

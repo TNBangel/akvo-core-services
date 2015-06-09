@@ -7,7 +7,9 @@
             [akvo-unified-log.json :as json]
             [akvo-unified-log.pg :as pg]
             [akvo-unified-log.entity-store :as es]
+            [akvo-unified-log.consumer :as consumer]
             [akvo.commons.config :as config]
+            [taoensso.timbre :as timbre]
             [clojure.pprint :refer (pprint)]
             [clojure.java.jdbc :as jdbc]
             [cheshire.core :refer (generate-string parse-string)]
@@ -77,7 +79,7 @@
     (queryf cdb-spec entity-store-sql)))
 
 (defn query [cdb-spec q]
-  (println q)
+  (timbre/trace q)
   (http/get (:url cdb-spec)
             {:query-params {:q q
                             :api_key (:api-key cdb-spec)}}))
@@ -136,7 +138,9 @@
     (get-in event [:payload "eventType"])))
 
 (defmethod handle-event :default [cdb-spec entity-store event]
-  (println "Skipping" (get-in event [:payload "eventType"])))
+  (timbre/tracef "Skipping %s at offset %s."
+                 (get-in event [:payload "eventType"])
+                 (get event :offset)))
 
 (defmethod handle-event "surveyGroupCreated"
   [cdb-spec entity-store {:keys [payload offset]}]
@@ -420,7 +424,7 @@
               (:offset event)
               (:org-id cdb-spec))
       (catch Exception e
-        (println "Could not handle event" (.getMessage e))))))
+        (timbre/error e "Could not handle event")))))
 
 (defn cartodb-entity-store [cdb-spec]
   ;; (queryf cdb-spec create-entity-store-sql)
@@ -471,22 +475,35 @@
           (recur))))
     close!))
 
+(defn clear-tables [cdb-spec]
+  (queryf cdb-spec "DELETE FROM event_offset")
+  (queryf cdb-spec "DELETE FROM question")
+  (queryf cdb-spec "DELETE FROM survey")
+  (queryf cdb-spec "DELETE FROM form")
+  (queryf cdb-spec "DELETE FROM data_point")
+  (queryf cdb-spec "DELETE FROM entity_store")
+  (delete-all-raw-data-tables cdb-spec))
+
 (defn restart [config org-id event-handler]
   (let [cdb-spec (cartodb-spec config org-id)]
-    (queryf cdb-spec "DELETE FROM event_offset")
-    (queryf cdb-spec "DELETE FROM question")
-    (queryf cdb-spec "DELETE FROM survey")
-    (queryf cdb-spec "DELETE FROM form")
-;;    (queryf cdb-spec "DELETE FROM data_point")
-    (queryf cdb-spec "DELETE FROM entity_store")
-    (delete-all-raw-data-tables cdb-spec)
+    (clear-tables cdb-spec)
     (start config org-id event-handler)))
 
-(defn -main [start-or-restart config-file & instances]
-  (let [cartodb-consumer (if (= "restart" start-or-restart)
-                           restart
-                           start)
-        config (edn/read-string (slurp config-file))]))
+(defn consumer [opts org-id]
+  (let [cdb-spec (cartodb-spec @config/configs org-id)]
+    (setup-tables cdb-spec)
+    (when (:restart? opts)
+      (timbre/infof "Restarting cartodb consumer for %s" org-id)
+      (clear-tables cdb-spec))
+    (let [stop-fn (atom nil)]
+      (reify consumer/IConsumer
+        (-start [consumer]
+          (timbre/infof "Starting cartodb consumer for %s" org-id)
+          (reset! stop-fn (start @config/configs org-id handle-event)))
+        (-stop [consumer]
+          (when-let [stop @stop-fn]
+            (stop)))))))
+
 
 (comment
 
@@ -496,22 +513,24 @@
 
   (def cdb-spec (cartodb-spec @config/configs "akvoflow-uat1"))
 
+  (queryf cdb-spec "DROP TABLE data_point")
+
   (setup-tables cdb-spec)
 
   (get-offset cdb-spec "akvoflow-uat1")
 
   (def close! (restart @config/configs
-                       "akvoflow-uat1"
+                       "flowaglimmerofhope-hrd"
                        handle-event))
 
   (def close! (start @config/configs
-                     "flowaglimmerofhope-hrd"
+                     "akvoflow-uat1"
                      handle-event))
 
   (queryf cdb-spec cartodbfy-data-points)
   (close!)
 
-  (queryf cdb-spec "SELECT * FROM data_point")
+  (queryf cdb-spec "SELECT * FROM form")
   (queryf cdb-spec cartodbfy-data-points)
 
   (count

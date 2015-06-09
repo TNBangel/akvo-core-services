@@ -8,6 +8,7 @@
                  [org.clojure/java.jdbc "0.3.6"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [org.clojure/core.cache "0.6.4"]
+                 [org.clojure/tools.cli "0.3.1"]
                  [org.akvo/commons "0.3.0-SNAPSHOT"]
                  [org.postgresql/postgresql "9.3-1102-jdbc41"]
                  [com.github.fge/json-schema-validator "2.2.6"]
