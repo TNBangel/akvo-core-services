@@ -26,7 +26,14 @@
 
                   [nil "--restart" "Restart all consumers from offset 0"
                    :id :restart?]
+
+                  [nil "--port PORT" "Webserver port"
+                   :default 3030
+                   :parse-fn #(Long/parseLong %) ]
+
                   ["-h" "--help" "Show cli help summary"]])
+
+
 
 (defn help [{:keys [summary]}]
   (println "-----------------------------------")
@@ -79,10 +86,8 @@
             (consumer/start (cartodb/consumer opts org-id)))
 
           :reporting
-          (doseq [org-id (:org-ids opts)]
-            (throw (ex-info "TODO" {}))
-            ;;(consumer/start (reporting/consumer opts org-id))
-            ))
-        (let [port (Integer. 3030)]
+          (throw (IllegalArgumentException. "TODO: Reporting cli")))
+        (let [port (Integer. (:port opts))]
           (jetty/run-jetty (app opts)
-                           {:port port :join? false}))))))
+                           {:port port
+                            :join? false}))))))
