@@ -93,20 +93,24 @@
         (with-open [stmt (.createStatement conn)]
           (.setFetchSize stmt 300)
           (with-open [result-set (.executeQuery stmt (get-from offset))]
-            (loop []
-              (if (.next result-set)
-                (do
-                  (async/>!! chan {:offset (.getLong result-set 1)
-                                   :payload (json/parse-string (.getString result-set 2))})
-                  (recur))
-                (do
-                  ;; Catch up done, start listening
-                  (timbre/info "Catch-up done, start polling for new events")
-                  (.scheduleWithFixedDelay scheduler
-                                           (poll listener-conn chan)
-                                           1 ;; Initial delay
-                                           1 ;; Delay
-                                           TimeUnit/SECONDS))))))))
+            (let [t (System/nanoTime)]
+              (loop [c 0]
+                (if (.next result-set)
+                  (do
+                    (async/>!! chan {:offset (.getLong result-set 1)
+                                     :payload (json/parse-string (.getString result-set 2))})
+                    (recur (inc c)))
+                  (do
+                    ;; Catch up done, start listening
+                    (timbre/infof "Catch-up done. Inserted %d events in %d seconds"
+                                  c (long (/ (- (System/nanoTime) t)
+                                             (* 1000000 1000))))
+                    (timbre/info "Start polling for new events")
+                    (.scheduleWithFixedDelay scheduler
+                                             (poll listener-conn chan)
+                                             1 ;; Initial delay
+                                             1 ;; Delay
+                                             TimeUnit/SECONDS)))))))))
     {:chan chan
      :close! (fn []
                (async/close! chan)
