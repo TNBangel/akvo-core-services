@@ -14,7 +14,7 @@
             [clojure.java.jdbc :as jdbc]
             [cheshire.core :refer (generate-string parse-string)]
             [environ.core :refer (env)]
-            [clj-http.client :as http])
+            [org.httpkit.client :as http])
   (:import [org.postgresql.util PGobject]))
 
 (defn cartodb-spec [config org-id]
@@ -80,18 +80,18 @@
 
 (defn query [cdb-spec q]
   (timbre/trace q)
-  (http/get (:url cdb-spec)
-            {:query-params {:q q
-                            :api_key (:api-key cdb-spec)}}))
+  @(http/get (:url cdb-spec)
+             {:query-params {:q q
+                             :api_key (:api-key cdb-spec)}}))
 
 (defn escape-str [s]
   (string/replace s "'" "''"))
 
 (defn queryf [cdb-spec q & args]
   (-> (query cdb-spec (apply format q args))
-    :body
-    parse-string
-    (get "rows")))
+      :body
+      parse-string
+      (get "rows")))
 
 (defn question-type->db-type [question-type]
   (condp contains? question-type
@@ -115,10 +115,12 @@
       (.replaceAll " " "_")
       (.replaceAll "[^A-Za-z0-9_]" "")))
 
+
 (defn question-column-name
   ([cdb-spec question-id]
    {:pre [(integer? question-id)]}
    (if-let [{:strs [display_text identifier]}
+            ;; TODO cache lookup
             (-> (queryf cdb-spec
                         "SELECT display_text, identifier FROM question WHERE id=%s"
                         question-id)
@@ -285,7 +287,7 @@
             (get form-instance "id")
             (get form-instance "dataPointId" "NULL")
             (if (and lat lon)
-              (format "ST_SetSRID(ST_Point(%s, %s),4326)" lat lon)
+              (format "ST_SetSRID(ST_Point(%s, %s),4326)" lon lat)
               "NULL")
             (or lat "NULL")
             (or lon "NULL"))
@@ -309,7 +311,7 @@
             (raw-data-table-name (get form-instance "formId"))
             (get form-instance "dataPointId" "NULL")
             (if (and lat lon)
-              (format "ST_SetSRID(ST_Point(%s, %s),4326)" lat lon)
+              (format "ST_SetSRID(ST_Point(%s, %s),4326)" lon lat)
               "NULL")
             (or lat "NULL")
             (or lon "NULL")
@@ -470,9 +472,9 @@
                                           event-handler)]
     (async/thread
       (loop []
-        (when-let [event (async/<!! chan)]
-          (event-handler event)
-          (recur))))
+          (when-let [event (async/<!! chan)]
+            (event-handler event)
+            (recur))))
     close!))
 
 (defn clear-tables [cdb-spec]
@@ -511,9 +513,15 @@
     (config/set-settings! "cartodb-config.edn")
     (config/set-config! (@config/settings :config-folder)))
 
-  (def cdb-spec (cartodb-spec @config/configs "akvoflow-uat1"))
+  (def cdb-spec (cartodb-spec @config/configs "flowaglimmerofhope-hrd"))
 
-  (queryf cdb-spec "DROP TABLE data_point")
+  (def cartodbfy-data-points "SELECT cdb_cartodbfytable ('data_point');")
+  (queryf cdb-spec "SELECT cdb_cartodbfytable('form')")
+
+
+  (queryf cdb-spec "SELECT * FROM form")
+
+  (queryf cdb-spec "SELECT * FROM raw_data_23659120")
 
   (setup-tables cdb-spec)
 
