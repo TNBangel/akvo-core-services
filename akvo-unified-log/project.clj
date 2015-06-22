@@ -28,8 +28,8 @@
                  [cheshire "5.4.0"]
                  [environ "1.0.0"]
                  [clj-time "0.9.0"]]
-  :aot [akvo-unified-log.reporting]
-  :main akvo-unified-log.reporting
+  :aot [akvo-unified-log.core]
+  :main akvo-unified-log.core
 
   ;; TODO figure out :profiles {:dev {:source-paths ["dev"]}}
   :source-paths ["dev" "src"])

@@ -1,7 +1,8 @@
 (ns akvo-unified-log.pg
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.core.async :as async]
-            [cheshire.core :as json])
+            [cheshire.core :as json]
+            [taoensso.timbre :as timbre])
   (:import [java.util.concurrent Executors TimeUnit]))
 
 ;; TODO config is misleading
@@ -100,7 +101,7 @@
                   (recur))
                 (do
                   ;; Catch up done, start listening
-                  (println "Catch-up done, start polling for new events")
+                  (timbre/info "Catch-up done, start polling for new events")
                   (.scheduleWithFixedDelay scheduler
                                            (poll listener-conn chan)
                                            1 ;; Initial delay

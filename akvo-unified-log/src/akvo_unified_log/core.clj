@@ -1,4 +1,5 @@
 (ns akvo-unified-log.core
+  (:gen-class)
   (:require [clojure.tools.cli :as cli]
             [clojure.edn :as edn]
             [clojure.set :as set]

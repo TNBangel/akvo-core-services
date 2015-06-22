@@ -1,5 +1,4 @@
 (ns akvo-unified-log.reporting
-  (:gen-class)
   (:require [akvo-unified-log.pg :as pg]
             [taoensso.timbre :refer (debugf infof warnf errorf fatalf error)]
             [environ.core :refer (env)]
