@@ -167,9 +167,9 @@
       (queryf cdb-spec
               "INSERT INTO survey (id, name, public, description) VALUES (%s, '%s', %s, '%s')"
               (get entity "id")
-              (get entity "name")
+              (escape-str (get entity "name"))
               (get entity "public")
-              (get entity "description")))))
+              (escape-str (get entity "description"))))))
 
 (defmethod handle-event "surveyGroupUpdated"
   [cdb-spec entity-store {:keys [payload offset]}]
@@ -178,9 +178,9 @@
              "SURVEY")
       (queryf cdb-spec
               "UPDATE survey SET name='%s', public=%s, description='%s' WHERE id=%s"
-              (get entity "name")
+              (escape-str (get entity "name"))
               (get entity "public")
-              (get entity "description")
+              (escape-str (get entity "description"))
               (get entity "id")))))
 
 (defmethod handle-event "formCreated"
@@ -200,8 +200,8 @@
                 %s, %s, '%s', '%s')"
             form-id
             (get entity "surveyId")
-            (get entity "name" "")
-            (get entity "description" ""))
+            (escape-str (get entity "name" ""))
+            (escape-str (get entity "description" "")))
     (when true ;; *cartodb*
       (queryf cdb-spec "SELECT cdb_cartodbfytable ('%s');" table-name)
       ;; TODO Figure out why why akvo_update_the_geom trigger doesn't work
@@ -217,8 +217,8 @@
     (queryf cdb-spec
             "UPDATE form SET survey_id=%s, name='%s', description='%s' WHERE id=%s"
             (get form "surveyId")
-            (get form "name" "")
-            (get form "description" "")
+            (escape-str (get form "name" ""))
+            (escape-str (get form "description" ""))
             (get form "id"))))
 
 (defmethod handle-event "questionCreated"
@@ -236,7 +236,7 @@
                VALUES ('%s','%s','%s','%s', '%s')"
             (get question "id")
             (get question "formId")
-            (get question "displayText")
+            (escape-str (get question "displayText"))
             (get question "identifier" "")
             (get question "questionType"))))
 
@@ -264,7 +264,7 @@
     (ensure existing-question "No such question" event)
     (queryf cdb-spec
             "UPDATE question SET display_text='%s', identifier='%s', type='%s' WHERE id='%s'"
-            display-text
+            (escape-str display-text)
             identifier
             type
             id)
@@ -387,7 +387,7 @@
             "UPDATE %s SET %s=%s WHERE id=%s"
             (raw-data-table-name (get answer "formId"))
             (question-column-name cdb-spec (get answer "questionId"))
-            (format "'%s'" (get answer "value"))
+            (format "'%s'" (escape-str (get answer "value")))
             (get answer "formInstanceId"))
     (es/set-entity entity-store answer)))
 
@@ -564,5 +564,4 @@
    (reify Thread$UncaughtExceptionHandler
      (uncaughtException [this thread e]
        (.printStackTrace e))))
-
   )
