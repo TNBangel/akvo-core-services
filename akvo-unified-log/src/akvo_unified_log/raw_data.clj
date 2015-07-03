@@ -1,4 +1,5 @@
 (ns akvo-unified-log.raw-data
+  (:refer-clojure :exclude (ensure))
   (:require [clojure.string :as string]
             [clojure.set :as set]
             [clojure.edn :as edn]
@@ -16,6 +17,15 @@
             [environ.core :refer (env)]
             [org.httpkit.client :as http])
   (:import [org.postgresql.util PGobject]))
+
+(defmacro ensure
+  "Like clojure.core/assert, but throws an ExceptionInfo instead"
+  ([expr] `(ensure ~expr "Ensure failed"))
+  ([expr msg] `(ensure ~expr ~msg {}))
+  ([expr msg map]
+    `(when-not ~expr
+       (throw (ex-info ~msg (merge {:expression '~expr}
+                                   ~map))))))
 
 (defn cartodb-spec [config org-id]
   (let [api-key (get-in config [org-id :cartodb-api-key])
@@ -106,11 +116,11 @@
     #{"CASCADE"} "text[]"))
 
 (defn raw-data-table-name [form-id]
-  {:pre [(integer? form-id)]}
+  (ensure (integer? form-id) "Invalid form-id" {:form-id form-id})
   (str "raw_data_" form-id))
 
 (defn munge-display-text [display-text]
-  {:pre [(string? display-text)]}
+  (ensure (string? display-text) "Invalid display-text" {:display-text display-text})
   (-> display-text
       (.replaceAll " " "_")
       (.replaceAll "[^A-Za-z0-9_]" "")))
@@ -118,7 +128,7 @@
 
 (defn question-column-name
   ([cdb-spec question-id]
-   {:pre [(integer? question-id)]}
+   (ensure (integer? question-id) "Invalid question-id" {:question-id question-id})
    (if-let [{:strs [display_text identifier]}
             ;; TODO cache lookup
             (-> (queryf cdb-spec
@@ -128,9 +138,13 @@
      (question-column-name question-id identifier display_text)
      (throw (ex-info "Could not find question" {:quesiton-id question-id}))))
   ([question-id identifier display-text]
-   {:pre [(integer? question-id)
-          (string? display-text)
-          (string? identifier)]}
+   (ensure (and (integer? question-id)
+                         (string? display-text)
+                         (string? identifier))
+           "Can not generate question-column-name"
+           {:question-id question-id
+            :display-text display-text
+            :identifier identifier})
    (if (empty? identifier)
      (format "\"%s_%s\"" question-id (munge-display-text display-text))
      identifier)))
@@ -227,7 +241,7 @@
             (get question "questionType"))))
 
 (defn get-question [cdb-spec id]
-  {:pre [(integer? id)]}
+  (ensure (integer? id) "Invalid question id" {:id id})
   (first
    (queryf cdb-spec
            "SELECT display_text as \"displayText\",
@@ -247,8 +261,7 @@
         existing-type (get existing-question "questionType")
         existing-display-text (get existing-question "displayText")
         existing-identifier (get existing-question "identifier" "")]
-    (when-not existing-question
-      (throw (ex-info "No such question" event)))
+    (ensure existing-question "No such question" event)
     (queryf cdb-spec
             "UPDATE question SET display_text='%s', identifier='%s', type='%s' WHERE id='%s'"
             display-text
@@ -270,7 +283,7 @@
               (question-type->db-type type)))))
 
 (defn get-location [cdb-spec data-point-id]
-  {:pre [(integer? data-point-id)]}
+  (ensure (integer? data-point-id) "Invalid data-point-id" {:data-point-id data-point-id})
   (first (queryf cdb-spec
                  "SELECT lat, lon FROM data_point WHERE id=%s"
                  data-point-id)))
@@ -509,9 +522,9 @@
 
 (comment
 
-  (let [config (edn/read-string (slurp "cartodb-config.edn"))]
-    (config/set-settings! "cartodb-config.edn")
-    (config/set-config! (@config/settings :config-folder)))
+  (config/set-settings! "test-cartodb-config.edn")
+  (config/set-config! (@config/settings :config-folder))
+
 
   (def cdb-spec (cartodb-spec @config/configs "flowaglimmerofhope-hrd"))
 
