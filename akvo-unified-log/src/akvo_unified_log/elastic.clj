@@ -20,18 +20,18 @@
 
 
 (comment
-  
+
   (def conn (esr/connect "http://127.0.0.1:9200"))
-  
+
   (def settings {:config-folder "/home/ivan/workspace/akvo/src/akvo-flow-server-config"
                  :event-log-user "postgres"
                  :event-log-password ""
                  :event-log-server "localhost"
                  :event-log-port 5432})
-  
+
   (def offset 0)
   (def list-of-org-ids ["akvoflow-3" "akvoflow-uat1"])
-  
+
   (def chs (let [chs (map #(pg/event-chan* (pg/event-log-spec settings %) offset)
                        list-of-org-ids)
                  close! (fn []
@@ -44,7 +44,7 @@
                    (handle-event event)
                    (recur))))
              close!))
-  
+
   )
 
 
@@ -53,11 +53,11 @@
   (def mapping-types {"data_point" {:properties {:location {:type "geo_point"}}}})
 
   (esi/create conn "flow" :mappings mapping-types)
-  
+
   ;; importing data from csv: lat,lon
-  
+
   (with-open [f (io/reader "/tmp/data_points.2.csv")]
     (doseq [line (csv/read-csv f)]
       (esd/create conn "flow" "data_point" {:location {:lat (Double/parseDouble (line 0)) :lon (Double/parseDouble (line 1))}})))
-  
+
 )
