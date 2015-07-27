@@ -5,6 +5,8 @@
             [taoensso.timbre :as timbre])
   (:import [java.util.concurrent Executors TimeUnit]))
 
+(set! *warn-on-reflection* true)
+
 ;; TODO config is misleading
 (defn event-log-spec [config org-id]
   (assert (not (empty? config)) "Config map is empty")
@@ -91,7 +93,7 @@
       (with-open [conn (jdbc/get-connection db-spec)]
         (.setAutoCommit conn false)
         (with-open [stmt (.createStatement conn)]
-          (.setFetchSize stmt 300)
+          (.setFetchSize stmt 1000)
           (with-open [result-set (.executeQuery stmt (get-from offset))]
             (let [t (System/nanoTime)]
               (loop [c 0]

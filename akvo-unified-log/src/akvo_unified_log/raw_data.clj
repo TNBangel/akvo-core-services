@@ -86,6 +86,7 @@
     (queryf cdb-spec form-sql)
     (queryf cdb-spec question-sql)
     (queryf cdb-spec data-point-sql)
+    (queryf cdb-spec "SELECT cdb_cartodbfytable ('data_point');")
     (queryf cdb-spec entity-store-sql)))
 
 (defn query [cdb-spec q]
@@ -351,24 +352,32 @@
 
 (defmethod handle-event "dataPointCreated"
   [cdb-spec entity-store {:keys [payload offset]}]
-  (let [data-point (get payload "entity")]
+  (let [data-point (get payload "entity")
+        {:strs [lat lon]} data-point]
     (queryf cdb-spec
-            "INSERT INTO data_point (id, lat, lon, survey_id, name, identifier) VALUES
+            "INSERT INTO data_point (id, the_geom, lat, lon, survey_id, name, identifier) VALUES
                  (%s, %s, %s, %s, '%s', '%s')"
             (get data-point "id")
-            (get data-point "lat")
-            (get data-point "lon")
+            (if (and lat lon)
+              (format "ST_SetSRID(ST_Point(%s, %s),4326)" lon lat)
+              "NULL")
+            lat
+            lon
             (get data-point "surveyId")
             (get data-point "name")
             (get data-point "identifier"))))
 
 (defmethod handle-event "dataPointUpdated"
   [cdb-spec entity-store {:keys [payload offset]}]
-  (let [data-point (get payload "entity")]
+  (let [data-point (get payload "entity")
+        {:strs [lat lon]} data-point]
     (queryf cdb-spec
-            "UPDATE data_point SET lat=%s, lon=%s, survey_id=%s, name='%s', identifier='%s' WHERE id=%s"
-            (get data-point "lat")
-            (get data-point "lon")
+            "UPDATE data_point SET the_geom=%s, lat=%s, lon=%s, survey_id=%s, name='%s', identifier='%s' WHERE id=%s"
+            (if (and lat lon)
+              (format "ST_SetSRID(ST_Point(%s, %s),4326)" lon lat)
+              "NULL")
+            lat
+            lon
             (get data-point "surveyId")
             (get data-point "name")
             (get data-point "identifier")
@@ -526,9 +535,16 @@
   (config/set-config! (@config/settings :config-folder))
 
 
-  (def cdb-spec (cartodb-spec @config/configs "flowaglimmerofhope-hrd"))
+  (def cdb-spec (cartodb-spec @config/configs "akvoflow-3"))
+  (def unilog-spec (pg/event-log-spec @config/settings "akvoflow-3"))
+
+  (def ch (pg/event-chan* unilog-spec 0))
+
+  (while true
+    (async/<!! (:chan ch)))
 
   (def cartodbfy-data-points "SELECT cdb_cartodbfytable ('data_point');")
+  (queryf cdb-spec cartodbfy-data-points)
   (queryf cdb-spec "SELECT cdb_cartodbfytable('form')")
 
 
