@@ -358,7 +358,7 @@
         {:strs [lat lon]} data-point]
     (queryf cdb-spec
             "INSERT INTO data_point (id, the_geom, lat, lon, survey_id, name, identifier) VALUES
-                 (%s, %s, %s, %s, '%s', '%s')"
+                 (%s, %s, %s, %s, %s, '%s', '%s')"
             (get data-point "id")
             (if (and lat lon)
               (format "ST_SetSRID(ST_Point(%s, %s),4326)" lon lat)
@@ -536,8 +536,8 @@
   (config/set-settings! "test-cartodb-config.edn")
   (config/set-config! (@config/settings :config-folder))
 
-
-  (def cdb-spec (cartodb-spec @config/configs "akvoflow-3"))
+  (def cdb-spec (cartodb-spec @config/configs "flowaglimmerofhope-hrd"))
+  (queryf cdb-spec "SELECT * FROM event_offset")
   (def unilog-spec (pg/event-log-spec @config/settings "akvoflow-3"))
 
   (def ch (pg/event-chan* unilog-spec 0))
