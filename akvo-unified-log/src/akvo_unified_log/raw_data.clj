@@ -96,7 +96,9 @@
                              :api_key (:api-key cdb-spec)}}))
 
 (defn escape-str [s]
-  (string/replace s "'" "''"))
+  (if (string? s)
+    (string/replace s "'" "''")
+    ""))
 
 (defn queryf [cdb-spec q & args]
   (-> (query cdb-spec (apply format q args))
