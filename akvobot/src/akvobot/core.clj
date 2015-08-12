@@ -7,7 +7,7 @@
             [environ.core :refer [env]]
             [tentacles.issues :refer [create-comment]]))
 
-(def check-list "## Checklist\n\n* [ ] Test plan\n* [ ] Copyright header\n* [ ] Code formatting")
+(def check-list "## Checklist\n\n* [ ] Test plan\n* [ ] Copyright header\n* [ ] Code formatting\n* [ ] Documentation")
 
 (defn make-checklist [{:strs [action number repository]}]
   (prn action (repository "name") number)
