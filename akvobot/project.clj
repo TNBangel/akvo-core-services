@@ -10,4 +10,6 @@
                  [compojure "1.3.1"]
                  [tentacles "0.3.0"]
                  [environ "1.0.0"]]
-  :profiles {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]]}})
+  :profiles {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]]}}
+  :aot [akvobot.core]
+  :main akvobot.core)

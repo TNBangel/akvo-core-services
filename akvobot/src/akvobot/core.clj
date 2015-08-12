@@ -5,7 +5,8 @@
             [compojure.core :refer [defroutes POST GET]]
             [compojure.route :as route]
             [environ.core :refer [env]]
-            [tentacles.issues :refer [create-comment]]))
+            [tentacles.issues :refer [create-comment]])
+  (:gen-class))
 
 (def check-list "## Checklist\n\n* [ ] Test plan\n* [ ] Copyright header\n* [ ] Code formatting\n* [ ] Documentation")
 
