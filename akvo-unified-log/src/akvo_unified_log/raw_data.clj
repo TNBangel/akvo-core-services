@@ -101,10 +101,13 @@
     ""))
 
 (defn queryf [cdb-spec q & args]
-  (-> (query cdb-spec (apply format q args))
-      :body
-      parse-string
-      (get "rows")))
+  (let [body (-> (query cdb-spec (apply format q args))
+                 :body
+                 parse-string)]
+    (if (contains? body "error")
+      (timbre/warnf "Query error for %s. Query '%s' resulted in error message '%s'"
+                    (:org-id cdb-spec) q (first (get body "error")))
+      (get body "rows"))))
 
 (defn question-type->db-type [question-type]
   (condp contains? question-type
@@ -139,7 +142,8 @@
                         question-id)
                 first)]
      (question-column-name question-id identifier display_text)
-     (throw (ex-info "Could not find question" {:quesiton-id question-id}))))
+     (throw (ex-info "Could not find question" {:org-id (:org-id cdb-spec)
+                                                :quesiton-id question-id}))))
   ([question-id identifier display-text]
    (ensure (and (integer? question-id)
                          (string? display-text)
@@ -244,7 +248,8 @@
             (get question "questionType"))))
 
 (defn get-question [cdb-spec id]
-  (ensure (integer? id) "Invalid question id" {:id id})
+  (ensure (integer? id) "Invalid question id" {:org-id (:org-id cdb-spec)
+                                               :id id})
   (first
    (queryf cdb-spec
            "SELECT display_text as \"displayText\",
@@ -264,7 +269,8 @@
         existing-type (get existing-question "questionType")
         existing-display-text (get existing-question "displayText")
         existing-identifier (get existing-question "identifier" "")]
-    (ensure existing-question "No such question" event)
+    (ensure existing-question "No such question" {:event event
+                                                  :org-id (:org-id cdb-spec)})
     (queryf cdb-spec
             "UPDATE question SET display_text='%s', identifier='%s', type='%s' WHERE id='%s'"
             (escape-str display-text)
@@ -286,7 +292,8 @@
               (question-type->db-type type)))))
 
 (defn get-location [cdb-spec data-point-id]
-  (ensure (integer? data-point-id) "Invalid data-point-id" {:data-point-id data-point-id})
+  (ensure (integer? data-point-id) "Invalid data-point-id" {:org-id (:org-id cdb-spec)
+                                                            :data-point-id data-point-id})
   (first (queryf cdb-spec
                  "SELECT lat, lon FROM data_point WHERE id=%s"
                  data-point-id)))
@@ -450,7 +457,10 @@
               (:offset event)
               (:org-id cdb-spec))
       (catch Exception e
-        (timbre/error e "Could not handle event")))))
+        (timbre/error e
+                      (format "Could not handle event for %s: %s"
+                              (:org-id cdb-spec)
+                              (pr-str event)))))))
 
 (defn cartodb-entity-store [cdb-spec]
   ;; (queryf cdb-spec create-entity-store-sql)
@@ -536,7 +546,9 @@
   (config/set-settings! "test-cartodb-config.edn")
   (config/set-config! (@config/settings :config-folder))
 
-  (def cdb-spec (cartodb-spec @config/configs "flowaglimmerofhope-hrd"))
+
+
+  (def cdb-spec (cartodb-spec @config/configs "akvoflow-3"))
   (queryf cdb-spec "SELECT * FROM event_offset")
   (def unilog-spec (pg/event-log-spec @config/settings "akvoflow-3"))
 
@@ -550,9 +562,9 @@
   (queryf cdb-spec "SELECT cdb_cartodbfytable('form')")
 
 
-  (queryf cdb-spec "SELECT * FROM form")
+  (query cdb-spec "SELECT * FROM survey")
 
-  (queryf cdb-spec "SELECT * FROM raw_data_23659120")
+  (query cdb-spec "SELECT * FROM data_point")
 
   (setup-tables cdb-spec)
 

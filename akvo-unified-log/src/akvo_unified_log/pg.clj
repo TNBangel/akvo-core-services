@@ -18,6 +18,12 @@
    :user (config :event-log-user)
    :password (config :event-log-password)})
 
+(defn- org-id
+  "Get the org-id out of an event-log-spec"
+  [db-spec]
+  (let [subname (:subname db-spec)]
+    (subs subname (inc (.lastIndexOf subname "/")))))
+
 (def get-by-id
   "SELECT payload::text FROM event_log WHERE id = %s")
 
@@ -104,10 +110,13 @@
                     (recur (inc c)))
                   (do
                     ;; Catch up done, start listening
-                    (timbre/infof "Catch-up done. Inserted %d events in %d seconds"
-                                  c (long (/ (- (System/nanoTime) t)
-                                             (* 1000000 1000))))
-                    (timbre/info "Start polling for new events")
+                    (timbre/infof "Catch-up done for %s. Inserted %d events in %d seconds"
+                                  (org-id db-spec)
+                                  c
+                                  (long (/ (- (System/nanoTime) t)
+                                           (* 1000000 1000))))
+                    (timbre/infof "Start polling for new events for %s"
+                                  (org-id db-spec))
                     (.scheduleWithFixedDelay scheduler
                                              (poll listener-conn chan)
                                              1 ;; Initial delay
