@@ -110,7 +110,7 @@
                     (recur (inc c)))
                   (do
                     ;; Catch up done, start listening
-                    (timbre/infof "Catch-up done for %s. Inserted %d events in %d seconds"
+                    (timbre/infof "Catch-up done for %s. Processed %d events in %d seconds"
                                   (org-id db-spec)
                                   c
                                   (long (/ (- (System/nanoTime) t)
