@@ -254,7 +254,8 @@
    (queryf cdb-spec
            "SELECT display_text as \"displayText\",
                    identifier,
-                   \"type\" as \"questionType\"
+                   \"type\" as \"questionType\",
+                   form_id as \"formId\"
             FROM question WHERE id='%s'"
            id)))
 
@@ -290,6 +291,18 @@
               (raw-data-table-name (get new-question "formId"))
               (question-column-name cdb-spec id)
               (question-type->db-type type)))))
+
+(defmethod handle-event "questionDeleted"
+  [cdb-spec entity-store {:keys [payload offset] :as event}]
+  (let [id (get-in payload ["entity" "id"])
+        question (get-question cdb-spec id)]
+    (queryf cdb-spec
+            "ALTER TABLE IF EXISTS %s DROP COLUMN IF EXISTS %s"
+            (raw-data-table-name (get question "formId"))
+            (question-column-name cdb-spec id))
+    (queryf cdb-spec
+            "DELETE FROM question WHERE id=%s"
+            id)))
 
 (defn get-location [cdb-spec data-point-id]
   (ensure (integer? data-point-id) "Invalid data-point-id" {:org-id (:org-id cdb-spec)
