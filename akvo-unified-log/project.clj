@@ -28,6 +28,7 @@
                  [cheshire "5.4.0"]
                  [environ "1.0.0"]
                  [clj-time "0.9.0"]
+                 [clj-statsd "0.3.11"]
                  [clojurewerkz/elastisch "2.1.0"]
                  #_[OfflineReverseGeocode/OfflineReverseGeocode "1.0-SNAPSHOT"]]
   :aot [akvo-unified-log.core]

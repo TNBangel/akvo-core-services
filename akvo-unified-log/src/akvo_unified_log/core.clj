@@ -2,7 +2,6 @@
   (:gen-class)
   (:require [clojure.tools.cli :as cli]
             [clojure.edn :as edn]
-            [clojure.set :as set]
             [clojure.string :as str]
             [clojure.pprint :as pp]
             [compojure.core :refer (defroutes GET routes)]
@@ -10,7 +9,8 @@
             [akvo-unified-log.consumer :as consumer]
             [akvo-unified-log.raw-data :as cartodb]
             [akvo.commons.config :as config]
-            [taoensso.timbre :as timbre]))
+            [taoensso.timbre :as timbre]
+            [clj-statsd :as statsd]))
 
 (def cli-options [[nil "--consumer CONSUMER" "Consumer to run. One of reporting/cartodb"
                    :validate [(partial #{:reporting :cartodb})
@@ -51,9 +51,6 @@
       (not (empty? errors))
       (abort (apply str errors))
 
-      (empty? org-ids)
-      (abort "No org-ids specified")
-
       (nil? (:settings options))
       (abort "No settings file specified")
 
@@ -74,21 +71,26 @@
   (let [cli-opts (cli/parse-opts args cli-options)]
     (if (get-in cli-opts [:options :help])
       (help cli-opts)
-      (let [opts (validate-cli-opts (set/rename-keys cli-opts {:arguments :org-ids}))
+      (let [opts (validate-cli-opts cli-opts)
             ;; flatten
             opts (merge (dissoc opts :options :summary :errors)
                         (:options opts))]
         (timbre/set-level! (:log-level opts))
         (config/set-settings! (:settings opts))
         (config/set-config! (@config/settings :config-folder))
-        (condp :consumer opts
-          :cartodb
-          (doseq [org-id (:org-ids opts)]
-            (consumer/start (cartodb/consumer opts org-id)))
+        (let [settings @config/settings]
+          (statsd/setup (:statsd-host settings)
+                        (:statsd-port settings)
+                        :prefix (:statsd-prefix settings))
 
-          :reporting
-          (throw (IllegalArgumentException. "TODO: Reporting cli")))
-        (let [port (Integer. (:port opts))]
-          (jetty/run-jetty (app opts)
-                           {:port port
-                            :join? false}))))))
+          (condp :consumer opts
+            :cartodb
+            (doseq [{:keys [org-id restart?]} (:instances settings)]
+              (consumer/start (cartodb/consumer (assoc opts :restart? restart?) org-id)))
+
+            :reporting
+            (throw (IllegalArgumentException. "TODO: Reporting cli")))
+          (let [port (Integer. (:port opts))]
+            (jetty/run-jetty (app opts)
+                             {:port port
+                              :join? false})))))))
