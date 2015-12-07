@@ -1,0 +1,96 @@
+CREATE TABLE survey (
+       id bigint PRIMARY KEY,
+       display_text text,
+       description text
+);
+
+CREATE TABLE form (
+       id bigint PRIMARY KEY,
+       survey_id bigint NOT NULL REFERENCES survey,
+       display_text text,
+       description text
+);
+
+CREATE TABLE data_point (
+       id bigint PRIMARY KEY,
+       form_id bigint NOT NULL REFERENCES form,
+       identifier text,
+-- 9.3      location json					-- in 9.4: jsonb
+       location text
+);
+
+CREATE TABLE form_instance (
+       id bigint PRIMARY KEY,
+       data_point_id bigint NOT NULL REFERENCES data_point 
+);
+
+CREATE TABLE question_group (
+       id bigint PRIMARY KEY,
+       form_id bigint NOT NULL REFERENCES form,
+       _order integer,
+       repeatable boolean
+);
+
+CREATE TABLE question (
+       id bigint PRIMARY KEY,
+       question_group_id bigint NOT NULL REFERENCES question_group,
+       _order integer,
+       type text,					-- "type" should be ok column name
+       display_text text,
+       identifier text
+);
+
+CREATE TABLE response (
+       id bigint PRIMARY KEY,
+       form_instance_id bigint NOT NULL REFERENCES form_instance,
+       question_id bigint NOT NULL REFERENCES question,
+--9.3       value json,					-- "value" should be ok  as column
+       value text,
+       integer iteration
+);
+
+
+CREATE TABLE birt_template (
+       id bigserial PRIMARY KEY,                       -- autoincrements
+       form_id bigint NOT NULL REFERENCES form,
+       parameters text,					-- maybe json
+       template text,
+       created datetime DEFAULT CURRENT_TIMESTAMP
+);
+
+
+
+INSERT INTO survey(id, display_text, description) VALUES (1,'First survey','This is the very first survey in the database');
+
+INSERT INTO form(id, survey_id, display_text, description) VALUES (1,1,'First form','This is the very first form in the database');
+
+INSERT INTO data_point(id, form_id, identifier, location) VALUES (1,1,'DP1','{"longitude"=11,"latitude"=59}');
+
+INSERT INTO form_instance(id, data_point_id) VALUES (1,1);
+
+INSERT INTO question_group(id, form_id, _order, repeatable) VALUES (1,1,1,true);
+
+INSERT INTO question(id, question_group_id, type, display_text, identifier, _order) VALUES (1,1,'free', 'First question; what','Q1',0);
+INSERT INTO question(id, question_group_id, type, display_text, identifier, _order) VALUES (2,1,'geo', 'Second question; where','Q2',1);
+INSERT INTO question(id, question_group_id, type, display_text, identifier, _order) VALUES (2,1,'geo', 'Third question','Q3',2);
+
+INSERT INTO response(id, form_instance_id, question_id, value, iteration) VALUES (1,1,1,'A place',1);
+INSERT INTO response(id, form_instance_id, question_id, value, iteration) VALUES (2,1,2,'{a=17;}',1);
+
+INSERT INTO birt_template(form_id, parameters, template) VALUES (1,'{a=17;}',
+'<?xml version="1.0" encoding="UTF-8"?><report xmlns="http://www.eclipse.org/birt/2005/design" version="3.2.23" id="1"></report>');
+
+
+--question 'type' values?
+--    public enum QuestionAnswerType {
+--        free, geo, photo, option
+--    }
+
+
+--start value of 'order'? 0 or 1?
+--start value of 'iteration'? 0 or 1?
+--data_point 'location' values?
+--response 'value' values? always json?
+
+
+--Report defs are around 200k - is that ok for 'text' or is a large object better?
