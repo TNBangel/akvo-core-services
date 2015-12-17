@@ -52,7 +52,7 @@ public class ListReports extends HttpServlet {
         // Set response content type
         response.setContentType("text/html");//TODO make a constant
         PrintWriter out = response.getWriter();
-        String title = "Reports defined for form " + id + " in the Database";
+        String title = "Reports defined for form " + id + " in the database";
         String docType = "<!doctype html public \"-//w3c//dtd html 4.0 "
                 + "transitional//en\">\n";
         out.println(docType + "<html>\n" + "<head><title>" + title
@@ -64,11 +64,11 @@ public class ListReports extends HttpServlet {
             // Retrieve by column name
             int rid = rs.getInt("id");
             String par = rs.getString("parameters");
-            String template = rs.getString("template");//hundreds of kB. Remove from resultset after debugging
-            Date d = rs.getDate("created");
+            String template = rs.getString("template");//might be hundreds of kB. Remove from resultset after debugging
+            Date d = rs.getTimestamp("created");
             
             // Display values
-            out.print("[" + rid + "] (" + par + " ) " + template.length() + " bytes, created " + d);
+            out.print("<A HREF=\"//localhost/BIRT/something/report_"+rid+".rptdesign\">[" + rid + "] (" + par + " ) " + template.length() + " bytes, created " + d +"</A>");
             out.println("<br>");
         }
         out.println("</body></html>");
@@ -82,25 +82,21 @@ public class ListReports extends HttpServlet {
         JSONArray reports = new JSONArray();
         root.put("reports", reports);
 
-        int lastSurveyId = -1;
         while (rs.next()) {
             JSONObject report = new JSONObject();
             report.put("id", rs.getInt("id"));
+            report.put("survey_id", rs.getInt("survey_id"));
+            report.put("form_id", rs.getInt("form_id"));
             report.put("parameters", rs.getString("parameters"));
-            report.put("created", rs.getDate("created"));
+            report.put("created", rs.getTimestamp("created"));
+            report.put("template_length", rs.getString("template").length());
             reports.put(report);
         }
-    
         
-        
-        
-        // Set response content type
+        // Set content type and write output
         response.setContentType("application/json");//TODO make a constant
         PrintWriter out = response.getWriter();
-
-        
-        
-        out.print(root.toString());//??
+        out.print(root.toString());
     }
     
   
@@ -137,11 +133,13 @@ public class ListReports extends HttpServlet {
 
         // JDBC driver name and database URL
         final String JDBC_DRIVER = "org.postgresql.Driver"; //
-        final String DB_URL = "jdbc:postgresql://localhost:1234/flowtestrep"; //
+//      final String DB_URL = "jdbc:postgresql://localhost:1234/flowtestrep"; //
+        final String DB_URL = "jdbc:postgresql://localhost:5432/flowtestrep"; //
 
         // Database credentials
         final String USER = "flowtestrep";
-        final String PASS = "snippsnappsnurr";
+//      final String PASS = "snippsnappsnurr";
+        final String PASS = "pertsetwolf";
 
 
         // Register JDBC driver

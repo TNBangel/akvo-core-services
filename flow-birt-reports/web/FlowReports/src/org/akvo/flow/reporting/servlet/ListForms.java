@@ -113,11 +113,13 @@ public class ListForms extends HttpServlet {
             HttpServletResponse response) throws ServletException, IOException {
         // JDBC driver name and database URL
         final String JDBC_DRIVER = "org.postgresql.Driver"; //
-        final String DB_URL = "jdbc:postgresql://localhost:1234/flowtestrep"; //
+//        final String DB_URL = "jdbc:postgresql://localhost:1234/flowtestrep"; //
+        final String DB_URL = "jdbc:postgresql://localhost:5432/flowtestrep"; //
 
         // Database credentials
         final String USER = "flowtestrep";
-        final String PASS = "snippsnappsnurr";
+//        final String PASS = "snippsnappsnurr";
+        final String PASS = "pertsetwolf";
 
 
         // Register JDBC driver

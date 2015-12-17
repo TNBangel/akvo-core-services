@@ -1,83 +1,106 @@
 CREATE TABLE survey (
-       id bigint PRIMARY KEY,
+       id bigserial PRIMARY KEY,
        display_text text,
-       description text
+       description text,
+       created timestamp DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE form (
-       id bigint PRIMARY KEY,
+       id bigserial PRIMARY KEY,
        survey_id bigint NOT NULL REFERENCES survey,
        display_text text,
-       description text
+       description text,
+       created timestamp DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE data_point (
-       id bigint PRIMARY KEY,
+       id bigserial PRIMARY KEY,
        form_id bigint NOT NULL REFERENCES form,
        identifier text,
--- 9.3      location json					-- in 9.4: jsonb
-       location text
+       location jsonb,
+       created timestamp DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE form_instance (
-       id bigint PRIMARY KEY,
-       data_point_id bigint NOT NULL REFERENCES data_point 
+       id bigserial PRIMARY KEY,
+       data_point_id bigint NOT NULL REFERENCES data_point,
+       created timestamp DEFAULT CURRENT_TIMESTAMP       
 );
 
 CREATE TABLE question_group (
-       id bigint PRIMARY KEY,
+       id bigserial PRIMARY KEY,
        form_id bigint NOT NULL REFERENCES form,
        _order integer,
-       repeatable boolean
+       display_text text,
+       repeatable boolean,
+       created timestamp DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE question (
-       id bigint PRIMARY KEY,
+       id bigserial PRIMARY KEY,
        question_group_id bigint NOT NULL REFERENCES question_group,
        _order integer,
        type text,					-- "type" should be ok column name
        display_text text,
-       identifier text
+       identifier text,
+       created timestamp DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE response (
-       id bigint PRIMARY KEY,
+       id bigserial PRIMARY KEY,
        form_instance_id bigint NOT NULL REFERENCES form_instance,
        question_id bigint NOT NULL REFERENCES question,
---9.3       value json,					-- "value" should be ok  as column
-       value text,
-       integer iteration
+       value json,					-- "value" should be ok  as column
+       iteration integer,
+       created timestamp DEFAULT CURRENT_TIMESTAMP
 );
 
 
 CREATE TABLE birt_template (
        id bigserial PRIMARY KEY,                       -- autoincrements
-       form_id bigint NOT NULL REFERENCES form,
-       parameters text,					-- maybe json
+       survey_id bigint NOT NULL REFERENCES survey,
+       form_id bigint REFERENCES form,
+       form_version text,
+       name text,
+       parameters jsonb,
        template text,
-       created datetime DEFAULT CURRENT_TIMESTAMP
+       created timestamp DEFAULT CURRENT_TIMESTAMP
 );
 
 
 
 INSERT INTO survey(id, display_text, description) VALUES (1,'First survey','This is the very first survey in the database');
+INSERT INTO survey(id, display_text, description) VALUES (2,'Second survey','This is the second survey in the database');
 
 INSERT INTO form(id, survey_id, display_text, description) VALUES (1,1,'First form','This is the very first form in the database');
+INSERT INTO form(id, survey_id, display_text, description) VALUES (2,1,'2nd form','This is the first form in the second survey');
+INSERT INTO form(id, survey_id, display_text, description) VALUES (3,1,'3rd form','This is the second form in second survey');
 
-INSERT INTO data_point(id, form_id, identifier, location) VALUES (1,1,'DP1','{"longitude"=11,"latitude"=59}');
+INSERT INTO data_point(id, form_id, identifier, location) VALUES (1,1,'DP1','{"type": "Point", "coordinates": [11, 59]}');
 
 INSERT INTO form_instance(id, data_point_id) VALUES (1,1);
 
-INSERT INTO question_group(id, form_id, _order, repeatable) VALUES (1,1,1,true);
+INSERT INTO question_group(id, form_id, _order, display_text, repeatable) VALUES (1,1,0,'Residence',false);
+INSERT INTO question_group(id, form_id, _order, display_text, repeatable) VALUES (2,1,1,'Residents',true);
 
 INSERT INTO question(id, question_group_id, type, display_text, identifier, _order) VALUES (1,1,'free', 'First question; what','Q1',0);
-INSERT INTO question(id, question_group_id, type, display_text, identifier, _order) VALUES (2,1,'geo', 'Second question; where','Q2',1);
-INSERT INTO question(id, question_group_id, type, display_text, identifier, _order) VALUES (2,1,'geo', 'Third question','Q3',2);
+INSERT INTO question(id, question_group_id, type, display_text, identifier, _order) VALUES (2,1,'geo',  'Second question; where','Q2',1);
+INSERT INTO question(id, question_group_id, type, display_text, identifier, _order) VALUES (3,2,'free', 'Third question: first name','Q3',2);
+INSERT INTO question(id, question_group_id, type, display_text, identifier, _order) VALUES (4,2,'free', 'Fourth question: last name','Q4',2);
+INSERT INTO question(id, question_group_id, type, display_text, identifier, _order) VALUES (5,2,'free', 'Fifth question: age','Q5',2);
 
-INSERT INTO response(id, form_instance_id, question_id, value, iteration) VALUES (1,1,1,'A place',1);
-INSERT INTO response(id, form_instance_id, question_id, value, iteration) VALUES (2,1,2,'{a=17;}',1);
+INSERT INTO response(id, form_instance_id, question_id, value, iteration) VALUES (1,1,1,'"A place"',0);
+INSERT INTO response(id, form_instance_id, question_id, value, iteration) VALUES (2,1,2,'{"type": "Point", "coordinates": [11, 59]}',0);
+INSERT INTO response(id, form_instance_id, question_id, value, iteration) VALUES (3,1,3,'"Alan"',0);
+INSERT INTO response(id, form_instance_id, question_id, value, iteration) VALUES (4,1,4,'"Anderson"',0);
+INSERT INTO response(id, form_instance_id, question_id, value, iteration) VALUES (5,1,5,'48',0);
+INSERT INTO response(id, form_instance_id, question_id, value, iteration) VALUES (6,1,3,'"Bridget"',1);
+INSERT INTO response(id, form_instance_id, question_id, value, iteration) VALUES (7,1,4,'"Brown"',1);
+INSERT INTO response(id, form_instance_id, question_id, value, iteration) VALUES (8,1,5,'44',1);
 
-INSERT INTO birt_template(form_id, parameters, template) VALUES (1,'{a=17;}',
+INSERT INTO birt_template(survey_id, form_id, name, parameters, template) VALUES (1,1,'Comp first survey first form','{"type":"comprehensive"}',
+'<?xml version="1.0" encoding="UTF-8"?><report xmlns="http://www.eclipse.org/birt/2005/design" version="3.2.23" id="1"></report>');
+INSERT INTO birt_template(survey_id, form_id, name, parameters, template) VALUES (1,NULL,'Comp first survey all forms','{"type":"comprehensive"}',
 '<?xml version="1.0" encoding="UTF-8"?><report xmlns="http://www.eclipse.org/birt/2005/design" version="3.2.23" id="1"></report>');
 
 
@@ -87,8 +110,8 @@ INSERT INTO birt_template(form_id, parameters, template) VALUES (1,'{a=17;}',
 --    }
 
 
---start value of 'order'? 0 or 1?
---start value of 'iteration'? 0 or 1?
+--start value of 'order'? 0 or 1? Jonas:0
+--start value of 'iteration'? 0 or 1? Jonas:0
 --data_point 'location' values?
 --response 'value' values? always json?
 

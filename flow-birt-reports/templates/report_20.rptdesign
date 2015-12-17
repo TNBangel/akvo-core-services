@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<report xmlns="http://www.eclipse.org/birt/2005/design" version="3.2.23" id="1">
+    <property name="createdBy">Akvo FLOW</property>
+    <property name="units">in</property>
+    <property name="iconFile">/templates/grouped_listing.gif</property>
+    <property name="cheatSheet">org.eclipse.birt.report.designer.ui.cheatsheet.groupedlisting</property>
+    <property name="bidiLayoutOrientation">ltr</property>
+    <property name="imageDPI">72</property>
+  
+    <data-sources>
+        <oda-data-source extensionID="org.eclipse.birt.report.data.oda.jdbc" name="Data Source">
+            <list-property name="privateDriverProperties">
+                <ex-property>
+                    <name>metadataBidiFormatStr</name>
+                    <value>ILYNN</value>
+                </ex-property>
+                <ex-property>
+                    <name>disabledMetadataBidiFormatStr</name>
+                </ex-property>
+                <ex-property>
+                    <name>contentBidiFormatStr</name>
+                    <value>ILYNN</value>
+                </ex-property>
+                <ex-property>
+                    <name>disabledContentBidiFormatStr</name>
+                </ex-property>
+            </list-property>
+            <property name="odaDriverClass">org.postgresql.Driver</property>
+            <property name="odaURL">jdbc:postgresql://localhost/flowtestrep</property>
+            <property name="odaUser">flowtestrep</property>
+            <encrypted-property name="odaPassword" encryptionID="base64">cGVydHNldHdvbGY=</encrypted-property>
+        </oda-data-source>
+    </data-sources>
+ 
+    <data-sets>
+        <oda-data-set extensionID="org.eclipse.birt.report.data.oda.jdbc.JdbcSelectDataSet" name="postgres">
+
+            <list-property name="columnHints">
+               <structure>
+<property name="columnName">q1</property>
+<text-property name="displayName">First question; what</text-property>
+<text-property name="heading">First question; what</text-property>
+</structure>
+<structure>
+<property name="columnName">latitude</property>
+<text-property name="displayName">Second question; where - latitude</text-property>
+<text-property name="heading">Second question; where - latitude</text-property>
+</structure>
+<structure>
+<property name="columnName">longitude</property>
+<text-property name="displayName">Second question; where - longitude</text-property>
+<text-property name="heading">Second question; where - longitude</text-property>
+</structure>
+<structure>
+<property name="columnName">q3</property>
+<text-property name="displayName">Third question: first name</text-property>
+<text-property name="heading">Third question: first name</text-property>
+</structure>
+<structure>
+<property name="columnName">q4</property>
+<text-property name="displayName">Fourth question: last name</text-property>
+<text-property name="heading">Fourth question: last name</text-property>
+</structure>
+<structure>
+<property name="columnName">q5</property>
+<text-property name="displayName">Fifth question: age</text-property>
+<text-property name="heading">Fifth question: age</text-property>
+</structure>
+
+            </list-property>
+
+            <list-property name="parameters"/>
+
+            <property name="dataSource">Data Source</property>
+
+            <list-property name="resultSet">
+               <structure>
+<property name="position">0</property>
+<property name="name">q1</property>
+<property name="nativeName">q1</property>
+<property name="dataType">string</property>
+</structure>
+<structure>
+<property name="position">1</property>
+<property name="name">latitude</property>
+<property name="nativeName">latitude</property>
+<property name="dataType">string</property>
+</structure>
+<structure>
+<property name="position">2</property>
+<property name="name">longitude</property>
+<property name="nativeName">longitude</property>
+<property name="dataType">string</property>
+</structure>
+<structure>
+<property name="position">3</property>
+<property name="name">q3</property>
+<property name="nativeName">q3</property>
+<property name="dataType">string</property>
+</structure>
+<structure>
+<property name="position">4</property>
+<property name="name">q4</property>
+<property name="nativeName">q4</property>
+<property name="dataType">string</property>
+</structure>
+<structure>
+<property name="position">5</property>
+<property name="name">q5</property>
+<property name="nativeName">q5</property>
+<property name="dataType">string</property>
+</structure>
+
+            </list-property>
+
+            <xml-property name="queryText"><![CDATA[select data_point.id as dp_pk, data_point.identifier as dp_text, form_instance.id as fi_pk, (select response.value from response where response.form_instance_id = form_instance.id and response.question_id=1 and response.iteration=0) as q1,(select response.value#>'{coordinates,1}' from response where response.form_instance_id = form_instance.id and response.question_id=2 and response.iteration=0) as latitude,(select response.value#>'{coordinates,0}' from response where response.form_instance_id = form_instance.id and response.question_id=2 and response.iteration=0) as longitude,(select response.value from response where response.form_instance_id = form_instance.id and response.question_id=3 and response.iteration=0) as q3,(select response.value from response where response.form_instance_id = form_instance.id and response.question_id=4 and response.iteration=0) as q4,(select response.value from response where response.form_instance_id = form_instance.id and response.question_id=5 and response.iteration=0) as q5 from data_point left join form_instance on data_point.id=form_instance.data_point_id where data_point.form_id=1]]></xml-property>
+        </oda-data-set>
+    </data-sets>
+
+    <styles>
+        <style name="report">
+            <property name="fontFamily">sans-serif</property>
+            <property name="fontSize">10pt</property>
+        </style>
+    </styles>
+
+    <page-setup>
+        <simple-master-page name="Simple MasterPage">
+        </simple-master-page>
+    </page-setup>
+
+    <body>
+        <table>
+            <property name="dataSet">postgres</property>
+
+            <list-property name="boundDataColumns">
+              <structure>
+<property name="name">q1</property>
+<text-property name="displayName">First question; what</text-property>
+<expression name="expression" type="javascript">dataSetRow["q1"]</expression><property name="dataType">string</property>
+</structure>
+<structure>
+<property name="name">latitude</property>
+<text-property name="displayName">Second question; where - latitude</text-property>
+<expression name="expression" type="javascript">dataSetRow["latitude"]</expression><property name="dataType">string</property>
+</structure>
+<structure>
+<property name="name">longitude</property>
+<text-property name="displayName">Second question; where - longitude</text-property>
+<expression name="expression" type="javascript">dataSetRow["longitude"]</expression><property name="dataType">string</property>
+</structure>
+<structure>
+<property name="name">q3</property>
+<text-property name="displayName">Third question: first name</text-property>
+<expression name="expression" type="javascript">dataSetRow["q3"]</expression><property name="dataType">string</property>
+</structure>
+<structure>
+<property name="name">q4</property>
+<text-property name="displayName">Fourth question: last name</text-property>
+<expression name="expression" type="javascript">dataSetRow["q4"]</expression><property name="dataType">string</property>
+</structure>
+<structure>
+<property name="name">q5</property>
+<text-property name="displayName">Fifth question: age</text-property>
+<expression name="expression" type="javascript">dataSetRow["q5"]</expression><property name="dataType">string</property>
+</structure>
+
+            </list-property>
+	    <column></column>
+<column></column>
+<column></column>
+<column></column>
+<column></column>
+<column></column>
+
+            <header>
+                <row>
+                  <cell>
+<label>
+<text-property name="text">First question; what</text-property>
+</label>
+</cell>
+<cell>
+<label>
+<text-property name="text">Second question; where - latitude</text-property>
+</label>
+</cell>
+<cell>
+<label>
+<text-property name="text">Second question; where - longitude</text-property>
+</label>
+</cell>
+<cell>
+<label>
+<text-property name="text">Third question: first name</text-property>
+</label>
+</cell>
+<cell>
+<label>
+<text-property name="text">Fourth question: last name</text-property>
+</label>
+</cell>
+<cell>
+<label>
+<text-property name="text">Fifth question: age</text-property>
+</label>
+</cell>
+
+                </row>
+            </header>
+
+            <detail>
+                <row>
+                   <cell>
+<data>
+<property name="resultSetColumn">q1</property></data>
+</cell>
+<cell>
+<data>
+<property name="resultSetColumn">latitude</property></data>
+</cell>
+<cell>
+<data>
+<property name="resultSetColumn">longitude</property></data>
+</cell>
+<cell>
+<data>
+<property name="resultSetColumn">q3</property></data>
+</cell>
+<cell>
+<data>
+<property name="resultSetColumn">q4</property></data>
+</cell>
+<cell>
+<data>
+<property name="resultSetColumn">q5</property></data>
+</cell>
+
+                </row>
+            </detail>
+        </table>
+    </body>
+</report>
