@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<report xmlns="http://www.eclipse.org/birt/2005/design" version="3.2.23" id="1">
+    <property name="createdBy">Akvo FLOW</property>
+    <property name="units">in</property>
+    <property name="iconFile">/templates/grouped_listing.gif</property>
+    <property name="cheatSheet">org.eclipse.birt.report.designer.ui.cheatsheet.groupedlisting</property>
+    <property name="bidiLayoutOrientation">ltr</property>
+    <property name="imageDPI">72</property>
+  
+    <data-sources>
+        <oda-data-source extensionID="org.eclipse.birt.report.data.oda.jdbc" name="Data Source">
+            <list-property name="privateDriverProperties">
+                <ex-property>
+                    <name>metadataBidiFormatStr</name>
+                    <value>ILYNN</value>
+                </ex-property>
+                <ex-property>
+                    <name>disabledMetadataBidiFormatStr</name>
+                </ex-property>
+                <ex-property>
+                    <name>contentBidiFormatStr</name>
+                    <value>ILYNN</value>
+                </ex-property>
+                <ex-property>
+                    <name>disabledContentBidiFormatStr</name>
+                </ex-property>
+            </list-property>
+            <property name="odaDriverClass">org.postgresql.Driver</property>
+            <property name="odaURL">jdbc:postgresql://localhost/flowtestrep</property>
+            <property name="odaUser">flowtestrep</property>
+            <encrypted-property name="odaPassword" encryptionID="base64">cGVydHNldHdvbGY=</encrypted-property>
+        </oda-data-source>
+    </data-sources>
+ 
+    <data-sets>
+        <oda-data-set extensionID="org.eclipse.birt.report.data.oda.jdbc.JdbcSelectDataSet" name="postgres">
+
+            <list-property name="columnHints">
+               $columnHints
+            </list-property>
+
+            <list-property name="parameters"/>
+
+            <property name="dataSource">Data Source</property>
+
+            <list-property name="resultSet">
+               $resultSet
+            </list-property>
+
+            <xml-property name="queryText"><![CDATA[$queryText]]></xml-property>
+        </oda-data-set>
+    </data-sets>
+
+    <styles>
+        <style name="report">
+            <property name="fontFamily">sans-serif</property>
+            <property name="fontSize">10pt</property>
+        </style>
+    </styles>
+
+    <page-setup>
+        <simple-master-page name="Simple MasterPage">
+        </simple-master-page>
+    </page-setup>
+
+    <body>
+        <table>
+            <property name="dataSet">postgres</property>
+
+            <list-property name="boundDataColumns">
+              $boundDataColumns
+            </list-property>
+	    $columnSet
+            <header>
+                <row>
+                  $headerCells
+                </row>
+            </header>
+
+            <detail>
+                <row>
+                   $detailCells
+                </row>
+            </detail>
+        </table>
+    </body>
+</report>

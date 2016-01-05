@@ -28,65 +28,32 @@
             <property name="odaUser">flowtestrep</property>
             <encrypted-property name="odaPassword" encryptionID="base64">cGVydHNldHdvbGY=</encrypted-property>
         </oda-data-source>
+        <oda-data-source extensionID="org.eclipse.birt.report.data.oda.jdbc" name="Local-uat1" id="96">
+            <list-property name="privateDriverProperties">
+                <ex-property>
+                    <name>metadataBidiFormatStr</name>
+                    <value>ILYNN</value>
+                </ex-property>
+                <ex-property>
+                    <name>disabledMetadataBidiFormatStr</name>
+                </ex-property>
+                <ex-property>
+                    <name>contentBidiFormatStr</name>
+                    <value>ILYNN</value>
+                </ex-property>
+                <ex-property>
+                    <name>disabledContentBidiFormatStr</name>
+                </ex-property>
+            </list-property>
+            <property name="odaDriverClass">org.postgresql.Driver</property>
+            <property name="odaURL">jdbc:postgresql://localhost/flowtestrep?currentSchema=akvoflow-uat1</property>
+            <property name="odaUser">flowtestrep</property>
+            <encrypted-property name="odaPassword" encryptionID="base64">cGVydHNldHdvbGY=</encrypted-property>
+        </oda-data-source>
     </data-sources>
     <data-sets>
         <oda-data-set extensionID="org.eclipse.birt.report.data.oda.jdbc.JdbcSelectDataSet" name="QuestionGroup" id="8">
-            <list-property name="columnHints">
-                <structure>
-                    <property name="columnName">dp_pk</property>
-                    <property name="analysis">measure</property>
-                    <text-property name="displayName">dp_pk</text-property>
-                    <text-property name="heading">dp_pk</text-property>
-                </structure>
-                <structure>
-                    <property name="columnName">dp_text</property>
-                    <property name="analysis">dimension</property>
-                    <text-property name="displayName">dp_text</text-property>
-                    <text-property name="heading">dp_text</text-property>
-                </structure>
-                <structure>
-                    <property name="columnName">fi_pk</property>
-                    <property name="analysis">measure</property>
-                    <text-property name="displayName">fi_pk</text-property>
-                    <text-property name="heading">fi_pk</text-property>
-                </structure>
-                <structure>
-                    <property name="columnName">q1</property>
-                    <property name="analysis">dimension</property>
-                    <text-property name="displayName">q1</text-property>
-                    <text-property name="heading">q1</text-property>
-                </structure>
-                <structure>
-                    <property name="columnName">latitude</property>
-                    <property name="analysis">dimension</property>
-                    <text-property name="displayName">latitude</text-property>
-                    <text-property name="heading">latitude</text-property>
-                </structure>
-                <structure>
-                    <property name="columnName">longitude</property>
-                    <property name="analysis">dimension</property>
-                    <text-property name="displayName">longitude</text-property>
-                    <text-property name="heading">longitude</text-property>
-                </structure>
-                <structure>
-                    <property name="columnName">q3</property>
-                    <property name="analysis">dimension</property>
-                    <text-property name="displayName">q3</text-property>
-                    <text-property name="heading">q3</text-property>
-                </structure>
-                <structure>
-                    <property name="columnName">q4</property>
-                    <property name="analysis">dimension</property>
-                    <text-property name="displayName">q4</text-property>
-                    <text-property name="heading">q4</text-property>
-                </structure>
-                <structure>
-                    <property name="columnName">q5</property>
-                    <property name="analysis">dimension</property>
-                    <text-property name="displayName">q5</text-property>
-                    <text-property name="heading">q5</text-property>
-                </structure>
-            </list-property>
+            <list-property name="columnHints"/>
             <list-property name="parameters"/>
             <structure name="cachedMetaData">
                 <list-property name="resultSet">
@@ -102,108 +69,125 @@
                     </structure>
                     <structure>
                         <property name="position">3</property>
-                        <property name="name">fi_pk</property>
-                        <property name="dataType">decimal</property>
+                        <property name="name">dp_lat</property>
+                        <property name="dataType">float</property>
                     </structure>
                     <structure>
                         <property name="position">4</property>
-                        <property name="name">q1</property>
+                        <property name="name">dp_lon</property>
                         <property name="dataType">string</property>
                     </structure>
                     <structure>
                         <property name="position">5</property>
-                        <property name="name">latitude</property>
-                        <property name="dataType">string</property>
+                        <property name="name">fi_pk</property>
+                        <property name="dataType">decimal</property>
                     </structure>
                     <structure>
                         <property name="position">6</property>
-                        <property name="name">longitude</property>
+                        <property name="name">q1</property>
                         <property name="dataType">string</property>
                     </structure>
                     <structure>
                         <property name="position">7</property>
-                        <property name="name">q3</property>
+                        <property name="name">latitude</property>
                         <property name="dataType">string</property>
                     </structure>
                     <structure>
                         <property name="position">8</property>
-                        <property name="name">q4</property>
+                        <property name="name">longitude</property>
                         <property name="dataType">string</property>
                     </structure>
                     <structure>
                         <property name="position">9</property>
+                        <property name="name">q3</property>
+                        <property name="dataType">string</property>
+                    </structure>
+                    <structure>
+                        <property name="position">10</property>
+                        <property name="name">q4</property>
+                        <property name="dataType">string</property>
+                    </structure>
+                    <structure>
+                        <property name="position">11</property>
                         <property name="name">q5</property>
                         <property name="dataType">string</property>
                     </structure>
                 </list-property>
             </structure>
-            <property name="dataSource">Data Source</property>
+            <property name="dataSource">Local-uat1</property>
             <list-property name="resultSet">
                 <structure>
                     <property name="position">1</property>
                     <property name="name">dp_pk</property>
                     <property name="nativeName">dp_pk</property>
                     <property name="dataType">decimal</property>
-                    <property name="nativeDataType">-5</property>
                 </structure>
                 <structure>
                     <property name="position">2</property>
                     <property name="name">dp_text</property>
                     <property name="nativeName">dp_text</property>
                     <property name="dataType">string</property>
-                    <property name="nativeDataType">12</property>
                 </structure>
                 <structure>
                     <property name="position">3</property>
-                    <property name="name">fi_pk</property>
-                    <property name="nativeName">fi_pk</property>
-                    <property name="dataType">decimal</property>
-                    <property name="nativeDataType">-5</property>
+                    <property name="name">dp_lat</property>
+                    <property name="nativeName">dp_lat</property>
+                    <property name="dataType">float</property>
                 </structure>
                 <structure>
                     <property name="position">4</property>
-                    <property name="name">q1</property>
-                    <property name="nativeName">q1</property>
+                    <property name="name">dp_lon</property>
+                    <property name="nativeName">dp_lon</property>
                     <property name="dataType">string</property>
-                    <property name="nativeDataType">1111</property>
                 </structure>
                 <structure>
                     <property name="position">5</property>
-                    <property name="name">latitude</property>
-                    <property name="nativeName">latitude</property>
-                    <property name="dataType">string</property>
-                    <property name="nativeDataType">12</property>
+                    <property name="name">fi_pk</property>
+                    <property name="nativeName">fi_pk</property>
+                    <property name="dataType">decimal</property>
                 </structure>
                 <structure>
                     <property name="position">6</property>
-                    <property name="name">longitude</property>
-                    <property name="nativeName">longitude</property>
+                    <property name="name">q1</property>
+                    <property name="nativeName">q1</property>
                     <property name="dataType">string</property>
-                    <property name="nativeDataType">12</property>
                 </structure>
                 <structure>
                     <property name="position">7</property>
-                    <property name="name">q3</property>
-                    <property name="nativeName">q3</property>
+                    <property name="name">latitude</property>
+                    <property name="nativeName">latitude</property>
                     <property name="dataType">string</property>
-                    <property name="nativeDataType">1111</property>
                 </structure>
                 <structure>
                     <property name="position">8</property>
-                    <property name="name">q4</property>
-                    <property name="nativeName">q4</property>
-                    <property name="nativeDataType">1111</property>
+                    <property name="name">longitude</property>
+                    <property name="nativeName">longitude</property>
+                    <property name="dataType">string</property>
                 </structure>
                 <structure>
                     <property name="position">9</property>
+                    <property name="name">q3</property>
+                    <property name="nativeName">q3</property>
+                    <property name="dataType">string</property>
+                </structure>
+                <structure>
+                    <property name="position">10</property>
+                    <property name="name">q4</property>
+                    <property name="nativeName">q4</property>
+                    <property name="dataType">string</property>
+                </structure>
+                <structure>
+                    <property name="position">11</property>
                     <property name="name">q5</property>
                     <property name="nativeName">q5</property>
-                    <property name="nativeDataType">1111</property>
+                    <property name="dataType">string</property>
                 </structure>
             </list-property>
             <xml-property name="queryText"><![CDATA[select 
 	data_point.id as dp_pk,
 	data_point.identifier as dp_text,
+	data_point.latitude as dp_lat,
+	data_point.identifier as dp_lon,
 	form_instance.id as fi_pk,
 	(select response.value from response where response.form_instance_id = form_instance.id and response.question_id=1 and response.iteration=0) as q1,
 	(select response.value->>'latitude' from response where response.form_instance_id = form_instance.id and response.question_id=2 and response.iteration=0) as latitude,
@@ -214,7 +198,670 @@
 from
 	data_point left join form_instance on data_point.id=form_instance.data_point_id
 where
-	data_point.form_id=1]]></xml-property>
+	form_instance.form_id=1]]></xml-property>
+        </oda-data-set>
+        <oda-data-set extensionID="org.eclipse.birt.report.data.oda.jdbc.JdbcSelectDataSet" name="rqg_count" id="95">
+            <property name="nullsOrdering">nulls lowest</property>
+            <list-property name="columnHints">
+                <structure>
+                    <property name="columnName">count</property>
+                    <property name="analysis">measure</property>
+                    <text-property name="displayName">count</text-property>
+                    <text-property name="heading">count</text-property>
+                </structure>
+            </list-property>
+            <list-property name="parameters">
+                <structure>
+                    <property name="name">form_id</property>
+                    <property name="nativeName"></property>
+                    <property name="dataType">decimal</property>
+                    <property name="nativeDataType">-5</property>
+                    <property name="position">1</property>
+                    <expression name="defaultValue" type="javascript">1</expression>
+                    <property name="isInput">true</property>
+                    <property name="isOutput">false</property>
+                </structure>
+            </list-property>
+            <structure name="cachedMetaData">
+                <list-property name="resultSet">
+                    <structure>
+                        <property name="position">1</property>
+                        <property name="name">count</property>
+                        <property name="dataType">decimal</property>
+                    </structure>
+                </list-property>
+            </structure>
+            <property name="dataSource">Data Source</property>
+            <list-property name="resultSet">
+                <structure>
+                    <property name="position">1</property>
+                    <property name="name">count</property>
+                    <property name="nativeName">count</property>
+                    <property name="dataType">decimal</property>
+                    <property name="nativeDataType">-5</property>
+                </structure>
+            </list-property>
+            <xml-property name="queryText"><![CDATA[select 
+	count(question_group.id)
+from
+	question_group
+where
+	question_group.form_id=? and question_group.repeatable = true]]></xml-property>
+            <xml-property name="designerValues"><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<model:DesignValues xmlns:design="http://www.eclipse.org/datatools/connectivity/oda/design" xmlns:model="http://www.eclipse.org/birt/report/model/adapter/odaModel">
+  <Version>2.0</Version>
+  <DataSetParameters>
+    <parameter>
+      <design:ParameterDefinition>
+        <design:inOutMode>In</design:inOutMode>
+        <design:attributes>
+          <design:identifier>
+            <design:name></design:name>
+            <design:position>1</design:position>
+          </design:identifier>
+          <design:nativeDataTypeCode>-5</design:nativeDataTypeCode>
+          <design:precision>0</design:precision>
+          <design:scale>0</design:scale>
+          <design:nullability>Unknown</design:nullability>
+        </design:attributes>
+      </design:ParameterDefinition>
+    </parameter>
+  </DataSetParameters>
+</model:DesignValues>]]></xml-property>
+        </oda-data-set>
+        <oda-data-set extensionID="org.eclipse.birt.report.data.oda.jdbc.JdbcSelectDataSet" name="Responses" id="97">
+            <list-property name="columnHints">
+                <structure>
+                    <property name="columnName">id</property>
+                    <property name="analysis">measure</property>
+                    <text-property name="displayName">id</text-property>
+                    <text-property name="heading">id</text-property>
+                </structure>
+                <structure>
+                    <property name="columnName">form_instance_id</property>
+                    <property name="analysis">measure</property>
+                    <text-property name="displayName">form_instance_id</text-property>
+                    <text-property name="heading">form_instance_id</text-property>
+                </structure>
+                <structure>
+                    <property name="columnName">question_id</property>
+                    <property name="analysis">measure</property>
+                    <text-property name="displayName">question_id</text-property>
+                    <text-property name="heading">question_id</text-property>
+                </structure>
+                <structure>
+                    <property name="columnName">value</property>
+                    <property name="analysis">dimension</property>
+                    <text-property name="displayName">value</text-property>
+                    <text-property name="heading">value</text-property>
+                </structure>
+                <structure>
+                    <property name="columnName">iteration</property>
+                    <property name="analysis">measure</property>
+                    <text-property name="displayName">iteration</text-property>
+                    <text-property name="heading">iteration</text-property>
+                </structure>
+                <structure>
+                    <property name="columnName">created_at</property>
+                    <property name="analysis">dimension</property>
+                    <text-property name="displayName">created_at</text-property>
+                    <text-property name="heading">created_at</text-property>
+                </structure>
+                <structure>
+                    <property name="columnName">updated_at</property>
+                    <property name="analysis">dimension</property>
+                    <text-property name="displayName">updated_at</text-property>
+                    <text-property name="heading">updated_at</text-property>
+                </structure>
+            </list-property>
+            <structure name="cachedMetaData">
+                <list-property name="resultSet">
+                    <structure>
+                        <property name="position">1</property>
+                        <property name="name">id</property>
+                        <property name="dataType">decimal</property>
+                    </structure>
+                    <structure>
+                        <property name="position">2</property>
+                        <property name="name">form_instance_id</property>
+                        <property name="dataType">decimal</property>
+                    </structure>
+                    <structure>
+                        <property name="position">3</property>
+                        <property name="name">question_id</property>
+                        <property name="dataType">decimal</property>
+                    </structure>
+                    <structure>
+                        <property name="position">4</property>
+                        <property name="name">value</property>
+                        <property name="dataType">string</property>
+                    </structure>
+                    <structure>
+                        <property name="position">5</property>
+                        <property name="name">iteration</property>
+                        <property name="dataType">integer</property>
+                    </structure>
+                    <structure>
+                        <property name="position">6</property>
+                        <property name="name">created_at</property>
+                        <property name="dataType">date-time</property>
+                    </structure>
+                    <structure>
+                        <property name="position">7</property>
+                        <property name="name">updated_at</property>
+                        <property name="dataType">date-time</property>
+                    </structure>
+                </list-property>
+            </structure>
+            <property name="dataSource">Local-uat1</property>
+            <list-property name="resultSet">
+                <structure>
+                    <property name="position">1</property>
+                    <property name="name">id</property>
+                    <property name="nativeName">id</property>
+                    <property name="dataType">decimal</property>
+                    <property name="nativeDataType">-5</property>
+                </structure>
+                <structure>
+                    <property name="position">2</property>
+                    <property name="name">form_instance_id</property>
+                    <property name="nativeName">form_instance_id</property>
+                    <property name="dataType">decimal</property>
+                    <property name="nativeDataType">-5</property>
+                </structure>
+                <structure>
+                    <property name="position">3</property>
+                    <property name="name">question_id</property>
+                    <property name="nativeName">question_id</property>
+                    <property name="dataType">decimal</property>
+                    <property name="nativeDataType">-5</property>
+                </structure>
+                <structure>
+                    <property name="position">4</property>
+                    <property name="name">value</property>
+                    <property name="nativeName">value</property>
+                    <property name="dataType">string</property>
+                    <property name="nativeDataType">1111</property>
+                </structure>
+                <structure>
+                    <property name="position">5</property>
+                    <property name="name">iteration</property>
+                    <property name="nativeName">iteration</property>
+                    <property name="dataType">integer</property>
+                    <property name="nativeDataType">4</property>
+                </structure>
+                <structure>
+                    <property name="position">6</property>
+                    <property name="name">created_at</property>
+                    <property name="nativeName">created_at</property>
+                    <property name="dataType">date-time</property>
+                    <property name="nativeDataType">93</property>
+                </structure>
+                <structure>
+                    <property name="position">7</property>
+                    <property name="name">updated_at</property>
+                    <property name="nativeName">updated_at</property>
+                    <property name="dataType">date-time</property>
+                    <property name="nativeDataType">93</property>
+                </structure>
+            </list-property>
+            <xml-property name="queryText"><![CDATA[select *
+from response]]></xml-property>
+            <xml-property name="designerValues"><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<model:DesignValues xmlns:design="http://www.eclipse.org/datatools/connectivity/oda/design" xmlns:model="http://www.eclipse.org/birt/report/model/adapter/odaModel">
+  <Version>2.0</Version>
+  <design:ResultSets derivedMetaData="true">
+    <design:resultSetDefinitions>
+      <design:resultSetColumns>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:identifier>
+              <design:name>id</design:name>
+              <design:position>1</design:position>
+            </design:identifier>
+            <design:nativeDataTypeCode>-5</design:nativeDataTypeCode>
+            <design:precision>19</design:precision>
+            <design:scale>0</design:scale>
+            <design:nullability>NotNullable</design:nullability>
+            <design:uiHints>
+              <design:displayName>id</design:displayName>
+            </design:uiHints>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>id</design:label>
+            <design:formattingHints>
+              <design:displaySize>20</design:displaySize>
+            </design:formattingHints>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:identifier>
+              <design:name>form_instance_id</design:name>
+              <design:position>2</design:position>
+            </design:identifier>
+            <design:nativeDataTypeCode>-5</design:nativeDataTypeCode>
+            <design:precision>19</design:precision>
+            <design:scale>0</design:scale>
+            <design:nullability>NotNullable</design:nullability>
+            <design:uiHints>
+              <design:displayName>form_instance_id</design:displayName>
+            </design:uiHints>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>form_instance_id</design:label>
+            <design:formattingHints>
+              <design:displaySize>20</design:displaySize>
+            </design:formattingHints>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:identifier>
+              <design:name>question_id</design:name>
+              <design:position>3</design:position>
+            </design:identifier>
+            <design:nativeDataTypeCode>-5</design:nativeDataTypeCode>
+            <design:precision>19</design:precision>
+            <design:scale>0</design:scale>
+            <design:nullability>NotNullable</design:nullability>
+            <design:uiHints>
+              <design:displayName>question_id</design:displayName>
+            </design:uiHints>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>question_id</design:label>
+            <design:formattingHints>
+              <design:displaySize>20</design:displaySize>
+            </design:formattingHints>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:identifier>
+              <design:name>value</design:name>
+              <design:position>4</design:position>
+            </design:identifier>
+            <design:nativeDataTypeCode>1111</design:nativeDataTypeCode>
+            <design:precision>2147483647</design:precision>
+            <design:scale>0</design:scale>
+            <design:nullability>NotNullable</design:nullability>
+            <design:uiHints>
+              <design:displayName>value</design:displayName>
+            </design:uiHints>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>value</design:label>
+            <design:formattingHints>
+              <design:displaySize>2147483647</design:displaySize>
+            </design:formattingHints>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:identifier>
+              <design:name>iteration</design:name>
+              <design:position>5</design:position>
+            </design:identifier>
+            <design:nativeDataTypeCode>4</design:nativeDataTypeCode>
+            <design:precision>10</design:precision>
+            <design:scale>0</design:scale>
+            <design:nullability>Nullable</design:nullability>
+            <design:uiHints>
+              <design:displayName>iteration</design:displayName>
+            </design:uiHints>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>iteration</design:label>
+            <design:formattingHints>
+              <design:displaySize>11</design:displaySize>
+            </design:formattingHints>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:identifier>
+              <design:name>created_at</design:name>
+              <design:position>6</design:position>
+            </design:identifier>
+            <design:nativeDataTypeCode>93</design:nativeDataTypeCode>
+            <design:precision>29</design:precision>
+            <design:scale>6</design:scale>
+            <design:nullability>Nullable</design:nullability>
+            <design:uiHints>
+              <design:displayName>created_at</design:displayName>
+            </design:uiHints>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>created_at</design:label>
+            <design:formattingHints>
+              <design:displaySize>29</design:displaySize>
+            </design:formattingHints>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:identifier>
+              <design:name>updated_at</design:name>
+              <design:position>7</design:position>
+            </design:identifier>
+            <design:nativeDataTypeCode>93</design:nativeDataTypeCode>
+            <design:precision>29</design:precision>
+            <design:scale>6</design:scale>
+            <design:nullability>Nullable</design:nullability>
+            <design:uiHints>
+              <design:displayName>updated_at</design:displayName>
+            </design:uiHints>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>updated_at</design:label>
+            <design:formattingHints>
+              <design:displaySize>29</design:displaySize>
+            </design:formattingHints>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+      </design:resultSetColumns>
+      <design:criteria/>
+    </design:resultSetDefinitions>
+  </design:ResultSets>
+</model:DesignValues>]]></xml-property>
+        </oda-data-set>
+        <oda-data-set extensionID="org.eclipse.birt.report.data.oda.jdbc.JdbcSelectDataSet" name="Instances" id="98">
+            <list-property name="columnHints">
+                <structure>
+                    <property name="columnName">id</property>
+                    <property name="analysis">measure</property>
+                    <text-property name="displayName">id</text-property>
+                    <text-property name="heading">id</text-property>
+                </structure>
+                <structure>
+                    <property name="columnName">form_id</property>
+                    <property name="analysis">measure</property>
+                    <text-property name="displayName">form_id</text-property>
+                    <text-property name="heading">form_id</text-property>
+                </structure>
+                <structure>
+                    <property name="columnName">data_point_id</property>
+                    <property name="analysis">measure</property>
+                    <text-property name="displayName">data_point_id</text-property>
+                    <text-property name="heading">data_point_id</text-property>
+                </structure>
+                <structure>
+                    <property name="columnName">submitter</property>
+                    <property name="analysis">dimension</property>
+                    <text-property name="displayName">submitter</text-property>
+                    <text-property name="heading">submitter</text-property>
+                </structure>
+                <structure>
+                    <property name="columnName">submitted_at</property>
+                    <property name="analysis">dimension</property>
+                    <text-property name="displayName">submitted_at</text-property>
+                    <text-property name="heading">submitted_at</text-property>
+                </structure>
+                <structure>
+                    <property name="columnName">created_at</property>
+                    <property name="analysis">dimension</property>
+                    <text-property name="displayName">created_at</text-property>
+                    <text-property name="heading">created_at</text-property>
+                </structure>
+                <structure>
+                    <property name="columnName">updated_at</property>
+                    <property name="analysis">dimension</property>
+                    <text-property name="displayName">updated_at</text-property>
+                    <text-property name="heading">updated_at</text-property>
+                </structure>
+            </list-property>
+            <structure name="cachedMetaData">
+                <list-property name="resultSet">
+                    <structure>
+                        <property name="position">1</property>
+                        <property name="name">id</property>
+                        <property name="dataType">decimal</property>
+                    </structure>
+                    <structure>
+                        <property name="position">2</property>
+                        <property name="name">form_id</property>
+                        <property name="dataType">decimal</property>
+                    </structure>
+                    <structure>
+                        <property name="position">3</property>
+                        <property name="name">data_point_id</property>
+                        <property name="dataType">decimal</property>
+                    </structure>
+                    <structure>
+                        <property name="position">4</property>
+                        <property name="name">submitter</property>
+                        <property name="dataType">string</property>
+                    </structure>
+                    <structure>
+                        <property name="position">5</property>
+                        <property name="name">submitted_at</property>
+                        <property name="dataType">date-time</property>
+                    </structure>
+                    <structure>
+                        <property name="position">6</property>
+                        <property name="name">created_at</property>
+                        <property name="dataType">date-time</property>
+                    </structure>
+                    <structure>
+                        <property name="position">7</property>
+                        <property name="name">updated_at</property>
+                        <property name="dataType">date-time</property>
+                    </structure>
+                </list-property>
+            </structure>
+            <property name="dataSource">Local-uat1</property>
+            <list-property name="resultSet">
+                <structure>
+                    <property name="position">1</property>
+                    <property name="name">id</property>
+                    <property name="nativeName">id</property>
+                    <property name="dataType">decimal</property>
+                    <property name="nativeDataType">-5</property>
+                </structure>
+                <structure>
+                    <property name="position">2</property>
+                    <property name="name">form_id</property>
+                    <property name="nativeName">form_id</property>
+                    <property name="dataType">decimal</property>
+                    <property name="nativeDataType">-5</property>
+                </structure>
+                <structure>
+                    <property name="position">3</property>
+                    <property name="name">data_point_id</property>
+                    <property name="nativeName">data_point_id</property>
+                    <property name="dataType">decimal</property>
+                    <property name="nativeDataType">-5</property>
+                </structure>
+                <structure>
+                    <property name="position">4</property>
+                    <property name="name">submitter</property>
+                    <property name="nativeName">submitter</property>
+                    <property name="dataType">string</property>
+                    <property name="nativeDataType">12</property>
+                </structure>
+                <structure>
+                    <property name="position">5</property>
+                    <property name="name">submitted_at</property>
+                    <property name="nativeName">submitted_at</property>
+                    <property name="dataType">date-time</property>
+                    <property name="nativeDataType">93</property>
+                </structure>
+                <structure>
+                    <property name="position">6</property>
+                    <property name="name">created_at</property>
+                    <property name="nativeName">created_at</property>
+                    <property name="dataType">date-time</property>
+                    <property name="nativeDataType">93</property>
+                </structure>
+                <structure>
+                    <property name="position">7</property>
+                    <property name="name">updated_at</property>
+                    <property name="nativeName">updated_at</property>
+                    <property name="dataType">date-time</property>
+                    <property name="nativeDataType">93</property>
+                </structure>
+            </list-property>
+            <xml-property name="queryText"><![CDATA[select *
+from form_instance]]></xml-property>
+            <xml-property name="designerValues"><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<model:DesignValues xmlns:design="http://www.eclipse.org/datatools/connectivity/oda/design" xmlns:model="http://www.eclipse.org/birt/report/model/adapter/odaModel">
+  <Version>2.0</Version>
+  <design:ResultSets derivedMetaData="true">
+    <design:resultSetDefinitions>
+      <design:resultSetColumns>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:identifier>
+              <design:name>id</design:name>
+              <design:position>1</design:position>
+            </design:identifier>
+            <design:nativeDataTypeCode>-5</design:nativeDataTypeCode>
+            <design:precision>19</design:precision>
+            <design:scale>0</design:scale>
+            <design:nullability>NotNullable</design:nullability>
+            <design:uiHints>
+              <design:displayName>id</design:displayName>
+            </design:uiHints>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>id</design:label>
+            <design:formattingHints>
+              <design:displaySize>20</design:displaySize>
+            </design:formattingHints>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:identifier>
+              <design:name>form_id</design:name>
+              <design:position>2</design:position>
+            </design:identifier>
+            <design:nativeDataTypeCode>-5</design:nativeDataTypeCode>
+            <design:precision>19</design:precision>
+            <design:scale>0</design:scale>
+            <design:nullability>NotNullable</design:nullability>
+            <design:uiHints>
+              <design:displayName>form_id</design:displayName>
+            </design:uiHints>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>form_id</design:label>
+            <design:formattingHints>
+              <design:displaySize>20</design:displaySize>
+            </design:formattingHints>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:identifier>
+              <design:name>data_point_id</design:name>
+              <design:position>3</design:position>
+            </design:identifier>
+            <design:nativeDataTypeCode>-5</design:nativeDataTypeCode>
+            <design:precision>19</design:precision>
+            <design:scale>0</design:scale>
+            <design:nullability>NotNullable</design:nullability>
+            <design:uiHints>
+              <design:displayName>data_point_id</design:displayName>
+            </design:uiHints>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>data_point_id</design:label>
+            <design:formattingHints>
+              <design:displaySize>20</design:displaySize>
+            </design:formattingHints>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:identifier>
+              <design:name>submitter</design:name>
+              <design:position>4</design:position>
+            </design:identifier>
+            <design:nativeDataTypeCode>12</design:nativeDataTypeCode>
+            <design:precision>2147483647</design:precision>
+            <design:scale>0</design:scale>
+            <design:nullability>Nullable</design:nullability>
+            <design:uiHints>
+              <design:displayName>submitter</design:displayName>
+            </design:uiHints>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>submitter</design:label>
+            <design:formattingHints>
+              <design:displaySize>2147483647</design:displaySize>
+            </design:formattingHints>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:identifier>
+              <design:name>submitted_at</design:name>
+              <design:position>5</design:position>
+            </design:identifier>
+            <design:nativeDataTypeCode>93</design:nativeDataTypeCode>
+            <design:precision>29</design:precision>
+            <design:scale>6</design:scale>
+            <design:nullability>Nullable</design:nullability>
+            <design:uiHints>
+              <design:displayName>submitted_at</design:displayName>
+            </design:uiHints>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>submitted_at</design:label>
+            <design:formattingHints>
+              <design:displaySize>29</design:displaySize>
+            </design:formattingHints>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:identifier>
+              <design:name>created_at</design:name>
+              <design:position>6</design:position>
+            </design:identifier>
+            <design:nativeDataTypeCode>93</design:nativeDataTypeCode>
+            <design:precision>29</design:precision>
+            <design:scale>6</design:scale>
+            <design:nullability>Nullable</design:nullability>
+            <design:uiHints>
+              <design:displayName>created_at</design:displayName>
+            </design:uiHints>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>created_at</design:label>
+            <design:formattingHints>
+              <design:displaySize>29</design:displaySize>
+            </design:formattingHints>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+        <design:resultColumnDefinitions>
+          <design:attributes>
+            <design:identifier>
+              <design:name>updated_at</design:name>
+              <design:position>7</design:position>
+            </design:identifier>
+            <design:nativeDataTypeCode>93</design:nativeDataTypeCode>
+            <design:precision>29</design:precision>
+            <design:scale>6</design:scale>
+            <design:nullability>Nullable</design:nullability>
+            <design:uiHints>
+              <design:displayName>updated_at</design:displayName>
+            </design:uiHints>
+          </design:attributes>
+          <design:usageHints>
+            <design:label>updated_at</design:label>
+            <design:formattingHints>
+              <design:displaySize>29</design:displaySize>
+            </design:formattingHints>
+          </design:usageHints>
+        </design:resultColumnDefinitions>
+      </design:resultSetColumns>
+      <design:criteria/>
+    </design:resultSetDefinitions>
+  </design:ResultSets>
+</model:DesignValues>]]></xml-property>
         </oda-data-set>
     </data-sets>
     <styles>

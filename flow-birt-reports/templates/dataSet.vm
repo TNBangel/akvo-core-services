@@ -1,0 +1,16 @@
+        <oda-data-set extensionID="org.eclipse.birt.report.data.oda.jdbc.JdbcSelectDataSet" name="$dataSetName">
+
+            <list-property name="columnHints">
+               $columnHints
+            </list-property>
+
+            <list-property name="parameters"/>
+
+            <property name="dataSource">Data Source</property>
+
+            <list-property name="resultSet">
+               $resultSet
+            </list-property>
+
+            <xml-property name="queryText"><![CDATA[$queryText]]></xml-property>
+        </oda-data-set>

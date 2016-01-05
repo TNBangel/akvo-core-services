@@ -1,0 +1,19 @@
+        <table>
+            <property name="dataSet">$dataSetName</property>
+
+            <list-property name="boundDataColumns">
+              $boundDataColumns
+            </list-property>
+	    $columnSet
+            <header>
+                <row>
+                  $headerCells
+                </row>
+            </header>
+
+            <detail>
+                <row>
+                   $detailCells
+                </row>
+            </detail>
+        </table>
