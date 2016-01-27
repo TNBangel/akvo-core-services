@@ -1,9 +1,9 @@
-SET search_path TO "akvoflow-uat1",public;
+--SET search_path TO "akvoflow-uat1",public;
 
 CREATE TABLE birt_template (
        id bigserial PRIMARY KEY,                       -- autoincrements
        survey_id bigint NOT NULL,
-       form_id bigint NOT NULL,	--or maybe null, if it is an all-forms report?
+       form_id bigint,	--or maybe not null, if it is never an all-forms report?
        form_version text, --NYI
        name text,
        parameters jsonb,
@@ -20,64 +20,64 @@ INSERT INTO form(id, survey_id, display_text, description) VALUES (2,1,'2nd form
 INSERT INTO form(id, survey_id, display_text, description) VALUES (3,1,'3rd form','This is the second form in second survey');
 
 -- some data points
-INSERT INTO data_point(id, survey_id, identifier, longitude, latitude) VALUES (1,1,'DP1','17.9518','59.2904');
-INSERT INTO data_point(id, survey_id, identifier, longitude, latitude) VALUES (2,1,'DP2','18.9518','59.2904');
+INSERT INTO data_point(id, survey_id, identifier, longitude, latitude, elevation) VALUES (1,1,'DP1','17.9518','59.2904','17');
+INSERT INTO data_point(id, survey_id, identifier, longitude, latitude, elevation ) VALUES (2,1,'DP2','18.9518','59.2904','4711.0');
 
 -- some instances for the forms
 INSERT INTO form_instance(id, form_id, data_point_id) VALUES (1,1,1);
 INSERT INTO form_instance(id, form_id, data_point_id) VALUES (2,1,2);
 INSERT INTO form_instance(id, form_id, data_point_id) VALUES (3,2,2);
 
-INSERT INTO question_group(id, form_id, "order", display_text, repeatable) VALUES (1,1,0,'Residence',false);
-INSERT INTO question_group(id, form_id, "order", display_text, repeatable) VALUES (2,1,1,'Residents',true);
+INSERT INTO question_group(id, form_id, display_order, display_text, repeatable) VALUES (1,1,0,'Residence',false);
+INSERT INTO question_group(id, form_id, display_order, display_text, repeatable) VALUES (2,1,1,'Residents',true);
 
-INSERT INTO question(id, question_group_id, type, display_text, identifier, "order") VALUES (1,1,'free', 'First question; what','Q1',0);
-INSERT INTO question(id, question_group_id, type, display_text, identifier, "order") VALUES (2,1,'geo',  'Second question; where','Q2',1);
-INSERT INTO question(id, question_group_id, type, display_text, identifier, "order") VALUES (3,2,'free', 'Third question: first name','Q3',2);
-INSERT INTO question(id, question_group_id, type, display_text, identifier, "order") VALUES (4,2,'free', 'Fourth question: last name','Q4',2);
-INSERT INTO question(id, question_group_id, type, display_text, identifier, "order") VALUES (5,2,'free', 'Fifth question: age','Q5',2);
+INSERT INTO question(id, question_group_id, type, display_text, identifier, display_order) VALUES (1,1,'free', 'First question; what','Q1',0);
+INSERT INTO question(id, question_group_id, type, display_text, identifier, display_order) VALUES (2,1,'geo',  'Second question; where','Q2',1);
+INSERT INTO question(id, question_group_id, type, display_text, identifier, display_order) VALUES (3,2,'free', 'Third question: first name','Q3',2);
+INSERT INTO question(id, question_group_id, type, display_text, identifier, display_order) VALUES (4,2,'free', 'Fourth question: last name','Q4',3);
+INSERT INTO question(id, question_group_id, type, display_text, identifier, display_order) VALUES (5,2,'free', 'Fifth question: age','Q5',4);
 
 -- responses, first instance
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (1,1,1,'"A place"',0);
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (2,1,2,'{"type": "Point", "coordinates": [11, 59]}',0);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (1,1,1,'{"type":"free","value":"A place"}',0);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (2,1,2,'{"type": "GEO", "value": {"type": "Feature", "geometry": {"type": "Point", "coordinates": [-1.75665138, 52.40379247, 132.2]}, "properties": {"code": "6oqmn91a"}}}',0);
 
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (3,1,3,'"Alan"',0);
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (4,1,4,'"Anderson"',0);
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (5,1,5,'48',0);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (3,1,3,'{"type":"free","value":"Alan"}',0);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (4,1,4,'{"type":"free","value":"Anderson"}',0);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (5,1,5,'{"type":"free","value":48}',0);
 
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (6,1,3,'"Bridget"',1);
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (7,1,4,'"Brown"',1);
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (8,1,5,'44',1);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (6,1,3,'{"type":"free","value":"Bridget"}',1);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (7,1,4,'{"type":"free","value":"Brown"}',1);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (8,1,5,'{"type":"free","value":44}',1);
 --second instance
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (9,2,1,'"Another place"',0);
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (10,2,2,'{"type": "Point", "coordinates": [11, 59]}',0);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (9,2,1,'{"type":"free","value":"Another place"}',0);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (10,2,2,'{"type": "GEO", "value": {"type": "Feature", "geometry": {"type": "Point", "coordinates": [19.5665138, 59.40379247, 13.2]}, "properties": {"code": "6oqmn91b"}}}',0);
 
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (11,2,3,'"Cris"',0);
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (12,2,4,'"Carter"',0);
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (13,2,5,'24',0);
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (14,2,3,'"David"',1);
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (15,2,4,'"Dunn"',1);
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (16,2,5,'25',1);
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (17,2,3,'"Eric"',2);
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (18,2,4,'"Ebert"',2);
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (19,2,5,'5',2);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (11,2,3,'{"type":"free","value":"Cris"}',0);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (12,2,4,'{"type":"free","value":"Carter"}',0);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (13,2,5,'{"type":"free","value":24}',0);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (14,2,3,'{"type":"free","value":"David"}',1);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (15,2,4,'{"type":"free","value":"Dunn"}',1);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (16,2,5,'{"type":"free","value":25}',1);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (17,2,3,'{"type":"free","value":"Eric"}',2);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (18,2,4,'{"type":"free","value":"Ebert"}',2);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (19,2,5,'{"type":"free","value":5}',2);
 
 --third instance
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (20,3,3,'"Fred"',0);
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (21,3,4,'"Frog"',0);
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (22,3,5,'3',0);
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (23,3,3,'"Gus"',1);
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (24,3,4,'"Goose"',1);
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (25,3,5,'4',1);
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (26,3,3,'"Heidi"',2);
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (27,3,4,'"Hog"',2);
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (28,3,5,'5',2);
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (29,3,3,'"Izzy"',3);
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (30,3,4,'"Iguana"',3);
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (31,3,5,'6',3);
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (32,3,3,'"Joe"',4);
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (33,3,4,'"Jay"',4);
-INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (34,3,5,'7',4);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (20,3,3,'{"type":"free","value":"Fred"}',0);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (21,3,4,'{"type":"free","value":"Frog"}',0);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (22,3,5,'{"type":"free","value":3}',0);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (23,3,3,'{"type":"free","value":"Gus"}',1);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (24,3,4,'{"type":"free","value":"Goose"}',1);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (25,3,5,'{"type":"free","value":4}',1);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (26,3,3,'{"type":"free","value":"Heidi"}',2);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (27,3,4,'{"type":"free","value":"Hog"}',2);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (28,3,5,'{"type":"free","value":5}',2);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (29,3,3,'{"type":"free","value":"Izzy"}',3);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (30,3,4,'{"type":"free","value":"Iguana"}',3);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (31,3,5,'{"type":"free","value":6}',3);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (32,3,3,'{"type":"free","value":"Joe"}',4);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (33,3,4,'{"type":"free","value":"Jay"}',4);
+INSERT INTO response(id,form_instance_id, question_id, value, iteration) VALUES (34,3,5,'{"type":"free","value":7}',4);
 
 --predefined reports
 INSERT INTO birt_template(survey_id, form_id, name, parameters, template) VALUES (1,1,'Comp first survey first form','{"type":"comprehensive"}',
@@ -92,7 +92,7 @@ INSERT INTO birt_template(survey_id, form_id, name, parameters, template) VALUES
 --    }
 
 
---start value of 'order'? 0 or 1? Jonas:0
+--start value of 'display_order'? 0 or 1? Jonas:0
 --start value of 'iteration'? 0 or 1? Jonas:0
 --data_point 'location' values?
 --response 'value' values? always json?
