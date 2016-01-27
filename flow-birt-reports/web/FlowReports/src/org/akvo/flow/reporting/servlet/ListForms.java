@@ -34,16 +34,17 @@ public class ListForms extends HttpServlet {
 
     
     
-    void getAsHtml(HttpServletResponse response, ResultSet rs) throws IOException, SQLException {
+    void getAsHtml(HttpServletResponse response, ResultSet rs, String tenant) throws IOException, SQLException {
         // Set response content type
         response.setContentType("text/html");
         PrintWriter out = response.getWriter();
-        String title = "Forms in the Database";
+        String title = "Surveys and forms of instance " + tenant;
         String docType = "<!doctype html public \"-//w3c//dtd html 4.0 "
                 + "transitional//en\">\n";
         out.println(docType + "<html>\n" + "<head><title>" + title
                 + "</title></head>\n" + "<body bgcolor=\"#f0f0f0\">\n"
-                + "<h1 align=\"center\">" + title + "</h1>\n"); 
+                + "<h1 align=\"center\">" + title + "</h1>\n" 
+                + "<p>Ordered by number of instances</p>\n"); 
         
         // Extract data from result set
         while (rs.next()) {
@@ -52,12 +53,16 @@ public class ListForms extends HttpServlet {
             String sname = rs.getString("survey_text");
             int fid = rs.getInt("form_pk");
             String fname = rs.getString("form_text");
+            int count = rs.getInt("count");
 
             // Display values
             out.print("[" + sid + "] ");
             out.print(sname);
-            out.print("[" + fid + "] ");
-            out.println(fname + "<br>");
+            if (fid != 0) {
+                out.print("[" + fid + "] " + fname);
+                out.print(count + "<A HREF=\"/FlowReports/ListReports?format=html&form_id="+fid+"\">Reports</A>");
+            }
+            out.println("<br>");
         }
         out.println("</body></html>");
     }
@@ -113,13 +118,17 @@ public class ListForms extends HttpServlet {
             HttpServletResponse response) throws ServletException, IOException {
         // JDBC driver name and database URL
         final String JDBC_DRIVER = "org.postgresql.Driver"; //
-//        final String DB_URL = "jdbc:postgresql://localhost:1234/flowtestrep"; //
-        final String DB_URL = "jdbc:postgresql://localhost:5432/flowtestrep"; //
+        final String tenant = "akvoflow-uat1"; //
+//        final String DB_URL = "jdbc:postgresql://localhost:1234/flowtestrep" + tenant; //ssl tunnel to somewhere
+//        final String DB_URL = "jdbc:postgresql://localhost:5432/flowtestrep"; //
+        final String DB_URL = "jdbc:postgresql://localhost:5432/akvoflow-2"; //
 
         // Database credentials
-        final String USER = "flowtestrep";
+//        final String USER = "flowtestrep";
+        final String USER = "reporting";
 //        final String PASS = "snippsnappsnurr";
-        final String PASS = "pertsetwolf";
+//        final String PASS = "pertsetwolf";
+        final String PASS = "gnitroper";
 
 
         // Register JDBC driver
@@ -139,15 +148,16 @@ public class ListForms extends HttpServlet {
             // Execute SQL query
             stmt = conn.createStatement();
             String sql;
-            sql = "SELECT survey.id as survey_pk, survey.display_text as survey_text, form.id as form_pk, form.display_text as form_text"+
-            " FROM survey left join form on form.survey_id = survey.id";
+            sql = "SELECT survey.id as survey_pk, survey.display_text as survey_text, form.id as form_pk, form.description as form_text, count(form_instance.id)"+
+            " FROM survey left join form on form.survey_id = survey.id left join form_instance on form.id = form_instance.form_id group by survey.id, form.id "+
+                    " order by count(form_instance.id) desc";
             ResultSet rs = stmt.executeQuery(sql);
 
             //pick output format
             if (request.getQueryString() != null && request.getQueryString().toLowerCase().contains("json")) {
                 getAsJson(response, rs);
             } else {
-                getAsHtml(response, rs);
+                getAsHtml(response, rs, tenant);
             }
             
             // Clean-up environment

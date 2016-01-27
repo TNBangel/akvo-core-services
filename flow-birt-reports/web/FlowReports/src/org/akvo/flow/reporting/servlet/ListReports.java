@@ -48,11 +48,15 @@ public class ListReports extends HttpServlet {
         out.println("You must provide an integer value for the form_id parameter");
     }
     
-    void getAsHtml(HttpServletResponse response, ResultSet rs, int id) throws IOException, SQLException {
+    private String link(String text, String target) {
+        return "<A HREF=\""+target+"\">"+text+"</A>";
+    }
+    
+    void getAsHtml(HttpServletResponse response, ResultSet rs, int id, String tenant) throws IOException, SQLException {
         // Set response content type
         response.setContentType("text/html");//TODO make a constant
         PrintWriter out = response.getWriter();
-        String title = "Reports defined for form " + id + " in the database";
+        String title = "Reports defined for form " + id + " of instance "+tenant;
         String docType = "<!doctype html public \"-//w3c//dtd html 4.0 "
                 + "transitional//en\">\n";
         out.println(docType + "<html>\n" + "<head><title>" + title
@@ -60,17 +64,25 @@ public class ListReports extends HttpServlet {
                 + "<h1 align=\"center\">" + title + "</h1>\n"); 
         
         // Extract data from result set
+        int sid=0;
         while (rs.next()) {
             // Retrieve by column name
             int rid = rs.getInt("id");
+            sid = rs.getInt("survey_id");
             String par = rs.getString("parameters");
             String template = rs.getString("template");//might be hundreds of kB. Remove from resultset after debugging
             Date d = rs.getTimestamp("created");
             
             // Display values
-            out.print("<A HREF=\"//localhost/BIRT/something/report_"+rid+".rptdesign\">[" + rid + "] (" + par + " ) " + template.length() + " bytes, created " + d +"</A>");
+            out.print(link("[" + rid + "] (" + par + " ) " + template.length() + " bytes, created " + d, "/BIRTviewer/frameset?__report=report_"+rid+".rptdesign"));
+            out.println(" ");
+            out.print(link("Template","ReportTemplate?template_id="+rid));
             out.println("<br>");
         }
+        out.println(link("Generate new (1)","/FlowReports/CreateReport?format=html&type=1&survey_id="+sid+"&form_id="+id)+"<br>");
+        out.println(link("Generate new (2)","/FlowReports/CreateReport?format=html&type=2&survey_id="+sid+"&form_id="+id)+"<br>");
+        out.println(link("Generate new (3)","/FlowReports/CreateReport?format=html&type=3&survey_id="+sid+"&form_id="+id)+"<br>");
+
         out.println("</body></html>");
     }
     
@@ -133,13 +145,12 @@ public class ListReports extends HttpServlet {
 
         // JDBC driver name and database URL
         final String JDBC_DRIVER = "org.postgresql.Driver"; //
-//      final String DB_URL = "jdbc:postgresql://localhost:1234/flowtestrep"; //
-        final String DB_URL = "jdbc:postgresql://localhost:5432/flowtestrep"; //
+        final String tenant = "akvoflow-2";
+        final String DB_URL = "jdbc:postgresql://localhost:5432/akvoflow-2";
 
         // Database credentials
-        final String USER = "flowtestrep";
-//      final String PASS = "snippsnappsnurr";
-        final String PASS = "pertsetwolf";
+        final String USER = "reporting";
+        final String PASS = "gnitroper";
 
 
         // Register JDBC driver
@@ -165,7 +176,7 @@ public class ListReports extends HttpServlet {
             if (params.get("format") != null && params.get("format").equalsIgnoreCase("json")) {
                 getAsJson(response, rs);
             } else {
-                getAsHtml(response, rs, form_id);
+                getAsHtml(response, rs, form_id, tenant);
             }
             
             // Clean-up environment
